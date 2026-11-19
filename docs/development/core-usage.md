@@ -258,7 +258,7 @@ The GitHub Release is first created as a draft. The Steam job downloads the same
 
 **Recovery:** if one destination fails, the overall workflow fails and the GitHub Release remains a draft where applicable. Use GitHub Actions **Re-run failed jobs** on that same workflow run. Successful build/destination jobs remain complete, and the failed publishing job uses the retained artifact rather than rebuilding. Keep the run artifact until recovery is complete (14-day retention by default). GitHub Releases and Steam Workshop are not an atomic transaction.
 
-The Steam job runs on a self-hosted machine and executes PublisherCmd. Restrict access to that runner and do not allow untrusted pull-request workflows to target it. The job has no GitHub repository-token permissions.
+The Steam job runs on a self-hosted machine and executes PublisherCmd. Restrict access to that runner and do not allow untrusted pull-request workflows to target it. The job receives only the workflow's read-only `contents: read` permission and has no write access to the consuming repository.
 
 ## Current limitations
 
