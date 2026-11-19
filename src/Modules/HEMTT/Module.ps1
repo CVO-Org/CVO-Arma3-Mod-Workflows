@@ -146,7 +146,10 @@ function Invoke-A3WorkflowExternalProcess {
         }
         else {
             foreach ($commandName in @('hemtt.exe', 'hemtt')) {
-                $command = Get-Command $commandName -ErrorAction SilentlyContinue | Select-Object -First 1
+                # Ignore aliases and functions that may shadow the executable name.
+                $command = Get-Command $commandName -All -ErrorAction SilentlyContinue |
+                    Where-Object { $_.CommandType -in @('Application', 'ExternalScript') } |
+                    Select-Object -First 1
                 if ($command -and $command.Source) {
                     $executable = $command.Source
                     break
