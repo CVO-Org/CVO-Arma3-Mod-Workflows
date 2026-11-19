@@ -101,7 +101,7 @@ jobs:
 
       - name: Upload development build
         if: ${{ inputs.operation == 'Dev' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: hemtt-dev-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ inputs['artifact-path'] != '' && inputs['artifact-path'] || '.hemttout/dev/**' }}
@@ -109,7 +109,7 @@ jobs:
 
       - name: Upload test build
         if: ${{ inputs.operation == 'Build' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: hemtt-build-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ inputs['artifact-path'] != '' && inputs['artifact-path'] || '.hemttout/build/**' }}
@@ -117,7 +117,7 @@ jobs:
 
       - name: Upload release build
         if: ${{ inputs.operation == 'Release' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: hemtt-release-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ inputs['artifact-path'] != '' && inputs['artifact-path'] || '.hemttout/release/**' }}
@@ -125,7 +125,7 @@ jobs:
 
       - name: Upload project release directory
         if: ${{ inputs.operation == 'Release' && inputs['artifact-path'] == '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: hemtt-project-releases-${{ github.run_id }}-${{ github.run_attempt }}
           path: releases/**
