@@ -49,6 +49,6 @@ See [the architecture overview](docs/architecture/overview.md) and [configuratio
 
 ## Development status
 
-The initial PowerShell core is available under `src/Core/`. It supports JSON configuration out of the box; YAML requires the optional `powershell-yaml` module. Run the core tests locally with `./tests/Invoke-Tests.ps1` from PowerShell 7, or use the Windows CI workflow. The runtime configuration validator currently enforces the initial core contract and does not yet implement every JSON Schema constraint.
+The initial PowerShell module is available under `src/Arma3ModWorkflows.psd1`, with core implementation under `src/Core/`. It supports JSON configuration out of the box; YAML requires the optional `powershell-yaml` module. Run the core tests locally with `./tests/Invoke-Tests.ps1` from PowerShell 7, or use the Windows CI workflow. The runtime configuration validator currently enforces the initial core contract and does not yet implement every JSON Schema constraint.
 
 See [core usage](docs/development/core-usage.md) and [CHANGELOG.md](CHANGELOG.md) for current capabilities and milestones. This repository does not provide project templates or require consuming projects to adopt a common directory structure.
