@@ -321,7 +321,7 @@ Describe 'Arma3 Mod Workflows core' {
         try {
             $context = [pscustomobject]@{
                 ProjectRoot = $projectRoot
-                Configuration = @{ paths = @{ hemtt_config = '.hemtt/project.toml' }; tools = @{} }
+                Configuration = @{ paths = @{ hemtt_config = '.hemtt/project.toml' }; tools = @{ hemtt = @{ path = (Join-Path $PSHOME 'pwsh.exe') } } }
                 Logger = $null
             }
             $result = & $descriptor.Invoke $context 'Build'
