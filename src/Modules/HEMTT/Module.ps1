@@ -62,19 +62,45 @@ function Invoke-A3WorkflowExternalProcess {
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $startInfo
     $watch = [Diagnostics.Stopwatch]::StartNew()
-    if (-not $process.Start()) { throw "Failed to start process: $processFile" }
-    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-    $stderrTask = $process.StandardError.ReadToEndAsync()
-    $timedOut = -not $process.WaitForExit($TimeoutSeconds * 1000)
-    if ($timedOut) {
-        try { $process.Kill() } catch { }
-        $process.WaitForExit()
+    $stdout = ''
+    $stderr = ''
+    $timedOut = $false
+    $exitCode = 1
+    try {
+        if (-not $process.Start()) { throw "Failed to start process: $processFile" }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $timedOut = -not $process.WaitForExit($TimeoutSeconds * 1000)
+        if ($timedOut) {
+            # taskkill /T is available on Windows and also terminates descendants
+            # that would otherwise survive after the direct process is stopped.
+            if ($env:OS -eq 'Windows_NT') {
+                try {
+                    $taskkill = Join-Path $env:SystemRoot 'System32/taskkill.exe'
+                    if (Test-Path -LiteralPath $taskkill) {
+                        $killInfo = New-Object System.Diagnostics.ProcessStartInfo
+                        $killInfo.FileName = $taskkill
+                        $killInfo.Arguments = "/PID $($process.Id) /T /F"
+                        $killInfo.UseShellExecute = $false
+                        $killInfo.CreateNoWindow = $true
+                        $killer = [System.Diagnostics.Process]::Start($killInfo)
+                        if ($killer) { $killer.WaitForExit(5000); $killer.Dispose() }
+                    }
+                }
+                catch { }
+            }
+            try { if (-not $process.HasExited) { $process.Kill() } } catch { }
+            try { $process.WaitForExit() } catch { }
+        }
+        $stdout = $stdoutTask.Result
+        $stderr = $stderrTask.Result
+        $exitCode = if ($timedOut) { 124 } else { $process.ExitCode }
     }
-    $watch.Stop()
-    $stdout = $stdoutTask.Result
-    $stderr = $stderrTask.Result
-    $exitCode = if ($timedOut) { 124 } else { $process.ExitCode }
-    $process.Dispose()
+    finally {
+        $watch.Stop()
+        try { if ($process -and -not $process.HasExited) { $process.Kill(); $process.WaitForExit() } } catch { }
+        if ($process) { $process.Dispose() }
+    }
 
     return @{
         ExitCode = [int]$exitCode
@@ -198,6 +224,7 @@ function Invoke-A3WorkflowExternalProcess {
         $processDurationMs = 0
         $standardOutput = ''
         $standardError = ''
+        $processStartError = $null
         if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.Contains('timeout_seconds') -and $null -ne $toolConfiguration.timeout_seconds) {
             $timeoutSeconds = [int]$toolConfiguration.timeout_seconds
         }
@@ -263,7 +290,8 @@ function Invoke-A3WorkflowExternalProcess {
             }
         }
         catch {
-            $standardError = $_.Exception.Message
+            $processStartError = $_.Exception.Message
+            $standardError = $processStartError
             $outputText = $standardError
             $exitCode = 1
         }
@@ -297,6 +325,7 @@ function Invoke-A3WorkflowExternalProcess {
             Output = $outputText
             StandardOutput = $standardOutput
             StandardError = $standardError
+            ProcessStartError = $processStartError
             TimedOut = $timedOut
             TimeoutSeconds = $timeoutSeconds
             ProcessDurationMs = $processDurationMs
