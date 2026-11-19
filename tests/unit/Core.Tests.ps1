@@ -406,6 +406,19 @@ if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
             $buildResult.Data.Output | Should -Match 'Mock received: build'
             $buildResult.Data.Artifacts | Should -Contain (Join-Path $artifactDirectory 'test.pbo')
 
+            foreach ($operationCase in @(
+                @{ Operation = 'Check'; Command = 'check' },
+                @{ Operation = 'Dev'; Command = 'dev' },
+                @{ Operation = 'Release'; Command = 'release' },
+                @{ Operation = 'Run'; Command = 'build' }
+            )) {
+                $locationBefore = (Get-Location).Path
+                $operationResult = & $descriptor.Invoke $context $operationCase.Operation
+                $operationResult.Status | Should -Be 'Passed'
+                $operationResult.Data.Arguments[0] | Should -Be $operationCase.Command
+                (Get-Location).Path | Should -Be $locationBefore
+            }
+
             $context.Configuration.tools.hemtt.arguments = @('--fail')
             $failureResult = & $descriptor.Invoke $context 'Build'
             $failureResult.Status | Should -Be 'Failed'
