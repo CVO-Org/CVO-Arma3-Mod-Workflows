@@ -66,6 +66,16 @@ exit 9
         throw "PowerShell 5.1 SQF-VM compatibility check failed. $details"
     }
 
+    $testDirectory = Join-Path $projectRoot 'tests'
+    New-Item -ItemType Directory -Path $testDirectory -Force | Out-Null
+    'exitcode__ 0;' | Set-Content -LiteralPath (Join-Path $testDirectory 'smoke.sqf') -Encoding UTF8
+    $testContext = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ testing = @{ sqfvm = @{ files = @('tests/smoke.sqf') } }; tools = @{ sqfvm = @{ path = 'tools/sqfvm.ps1'; required = $true; timeout_seconds = 10 } } } }
+    $testResults = @(Invoke-A3WorkflowModules -Registry $context.Registry -Context $testContext -Operation Test -ModuleIds @('Testing.SQFVM'))
+    if ($testResults.Count -ne 1 -or $testResults[0].Status -ne 'Passed') {
+        $details = if ($testResults.Count -gt 0) { $testResults[0] | ConvertTo-Json -Depth 10 } else { 'No module result returned.' }
+        throw "PowerShell 5.1 SQF-VM test compatibility check failed. $details"
+    }
+
     Write-Output 'Windows PowerShell 5.1 compatibility check passed.'
 }
 finally {
