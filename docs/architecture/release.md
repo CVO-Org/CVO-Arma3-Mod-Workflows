@@ -76,7 +76,7 @@ The Steam job has no GitHub repository-token permissions and does not check out 
 
 ## Private framework access
 
-The framework repository is private. Each reusable workflow declares a workflow_call secret named framework_token. The consuming repository passes a fine-grained token with Contents: read access to this repository. The token is used only for the framework checkout, and checkout credentials are not persisted.
+The framework repository is private. Its Actions access settings must allow each consuming repository to call the reusable workflows. Each reusable workflow declares a workflow_call secret named framework_token. The consuming repository passes a fine-grained token with Contents: read access to this repository. The token is used only for the framework checkout, and checkout credentials are not persisted.
 
 ## Recovery
 
