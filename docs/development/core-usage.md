@@ -65,7 +65,7 @@ Examples:
     ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Dev -Module Build.HEMTT
     ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Release -Module Build.HEMTT
 
-HEMTT output, process exit code, executable path, and discovered output artifact paths are included in the module result. HEMTT itself remains an external dependency; the framework does not download or install it.
+HEMTT output, process exit code, executable path, and discovered output artifact paths are included in the module result. The module scans `.hemttout/dev`, `.hemttout/build`, or `.hemttout/release` as appropriate; for release operations it also reports archives in the HEMTT `releases` directory. HEMTT itself remains an external dependency; the framework does not download or install it.
 
 ## Current limitations
 
