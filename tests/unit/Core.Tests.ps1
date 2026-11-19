@@ -113,7 +113,7 @@ Describe 'Arma3 Mod Workflows core' {
             $registry = New-A3WorkflowModuleRegistry
             $configuration = @{ modules = @{ build = @{ enabled = $false } } }
             $discovery = Import-A3WorkflowModules -Registry $registry -ModulesRoot $root -Configuration $configuration
-            $discovery.Registered | Should -BeEmpty
+            $discovery.Registered.Count | Should -Be 0
             $discovery.Skipped[0].Id | Should -Be 'Build.Disabled'
             $registry.Modules.ContainsKey('Build.Disabled') | Should -BeFalse
         }
