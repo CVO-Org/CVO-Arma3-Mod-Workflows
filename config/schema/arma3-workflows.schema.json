@@ -112,7 +112,24 @@
           "$ref": "#/$defs/checkToggle"
         },
         "config": {
-          "$ref": "#/$defs/checkToggle"
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "severity": { "type": "string", "enum": ["error", "warning"] },
+            "required_classes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path", "name"],
+                "properties": {
+                  "path": { "type": "string", "minLength": 1 },
+                  "name": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+                }
+              }
+            }
+          }
         },
         "assets": {
           "type": "object",
