@@ -1,6 +1,6 @@
 # Module execution contract
 
-This document defines the initial contract that framework modules must follow. The PowerShell implementation will formalize these concepts with shared types and helper functions.
+This document defines the initial contract implemented by the PowerShell module registry. Module metadata and results currently use structured PowerShell objects; dedicated classes or manifests may be introduced only if testing demonstrates a clear benefit.
 
 ## Module metadata
 
