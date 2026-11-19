@@ -9,7 +9,7 @@ function Initialize-A3Workflow {
  if(-not [IO.Path]::IsPathRooted($reportDir)){$reportDir=Join-Path $loaded.ProjectRoot $reportDir}
  $logger=New-A3WorkflowLogger -LogPath (Join-Path $reportDir 'framework.log') -MinimumLevel Info -Console:$EnableConsoleLog
  $registry=New-A3WorkflowModuleRegistry
- $context=[pscustomobject]@{ProjectRoot=$loaded.ProjectRoot;FrameworkRoot=(Resolve-Path -LiteralPath $FrameworkRoot -ErrorAction Stop).Path;FrameworkVersion='0.1.0-dev';Configuration=$loaded.Values;ConfigurationPath=$loaded.ConfigPath;Logger=$logger;Registry=$registry;StartedAt=[DateTime]::UtcNow}
+ $context=[pscustomobject]@{ProjectRoot=$loaded.ProjectRoot;FrameworkRoot=(Resolve-Path -LiteralPath $FrameworkRoot -ErrorAction Stop).Path;FrameworkVersion='0.1.0-dev';Configuration=$loaded.Values;ConfigurationPath=$loaded.ConfigPath;Logger=$logger;Registry=$registry;ModuleDiscovery=$null;StartedAt=[DateTime]::UtcNow}
  Write-A3WorkflowLog -Logger $logger -Level Info -Message 'Framework initialized.' -Module Core -Data @{ProjectRoot=$context.ProjectRoot;ConfigurationPath=$context.ConfigurationPath;SchemaVersion=$loaded.Values.schema_version}
  $modulesRoot=Join-Path $context.FrameworkRoot 'src/Modules'
  $context.ModuleDiscovery=$null
