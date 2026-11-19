@@ -1048,8 +1048,24 @@ class CfgPatches
         $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Dependency Validation " + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path (Join-Path $projectRoot 'one') -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $projectRoot 'two') -Force | Out-Null
-        'class CfgPatches { class Duplicate_Addon { requiredAddons[] = {}; }; };' | Set-Content -LiteralPath (Join-Path $projectRoot 'one/config.cpp')
-        'class CfgPatches { class Duplicate_Addon { requiredAddons[] = {}; }; };' | Set-Content -LiteralPath (Join-Path $projectRoot 'two/config.cpp')
+        @'
+class CfgPatches
+{
+    class Duplicate_Addon
+    {
+        requiredAddons[] = {};
+    };
+};
+'@ | Set-Content -LiteralPath (Join-Path $projectRoot 'one/config.cpp')
+        @'
+class CfgPatches
+{
+    class Duplicate_Addon
+    {
+        requiredAddons[] = {};
+    };
+};
+'@ | Set-Content -LiteralPath (Join-Path $projectRoot 'two/config.cpp')
         try {
             $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ dependencies = @{ config_files = @('one/config.cpp', 'two/config.cpp'); internal_addons = @('Duplicate_Addon') } } } }
             $result = & $dependencyDescriptor.Invoke $context 'Validate'
