@@ -206,7 +206,7 @@ Run it with:
 
 ## SQF-VM automated tests
 
-The `Testing.SQFVM` module executes only the scripts explicitly listed in `testing.sqfvm.files`. It runs one fresh SQF-VM process per script, optionally loads configured `.cpp` config inputs first, and captures stdout, stderr, exit code, duration, and timeout state. The process timeout is controlled by `tools.sqfvm.timeout_seconds`; `testing.sqfvm.max_runtime_ms` optionally supplies SQF-VM's own per-process runtime limit (zero means unlimited inside SQF-VM, while the process timeout still applies).
+The `Testing.SQFVM` module executes only the scripts explicitly listed in `testing.sqfvm.files`. It validates the complete test and config-file manifest before launching any process, then runs one fresh SQF-VM process per script, optionally loading configured `.cpp` config inputs first. It captures stdout, stderr, exit code, duration, and timeout state. The process timeout is controlled by `tools.sqfvm.timeout_seconds`; `testing.sqfvm.max_runtime_ms` optionally supplies SQF-VM's own per-process runtime limit (zero means unlimited inside SQF-VM, while the process timeout still applies). `tools.sqfvm.arguments` may add other SQF-VM options, but runner-controlled options (`--automated`, `--suppress-welcome`, `--no-execute-print`, `--parse-only`, `--input-sqf`, `--input-config`, and `--max-runtime`) are reserved and rejected there so additional arguments cannot silently change execution mode.
 
 Example configuration:
 
