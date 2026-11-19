@@ -167,9 +167,9 @@ Run it with:
 
 ## SQF syntax validation module
 
-The framework discovers `Validation.SQF` when `modules.validation.enabled` is true. It uses SQFLint to inspect explicitly configured `.sqf` files and normalize its JSON diagnostics. SQFLint is an external optional dependency; it is not installed automatically.
+The framework discovers \`Validation.SQF\` when \`modules.validation.enabled\` is true. It uses SQF-VM in **automated parse-only mode** to preprocess and parse explicitly configured \`.sqf\` files. It does not execute the source scripts during this validation operation. SQF-VM is an external optional dependency; it is not installed automatically.
 
-Configure the files to inspect and the tool location:
+Configure the files to inspect and the executable location:
 
     {
       "schema_version": 1,
@@ -184,18 +184,21 @@ Configure the files to inspect and the tool location:
         }
       },
       "tools": {
-        "sqflint": {
-          "path": "tools/sqflint.jar",
+        "sqfvm": {
+          "path": "tools/sqfvm.exe",
           "required": false,
-          "timeout_seconds": 60
+          "timeout_seconds": 600
         }
       }
     }
 
-The manifest avoids assuming a particular source directory layout. Paths must be project-relative, remain inside the project root, exist, and use the `.sqf` extension. SQFLint is invoked once per file because its CLI accepts one source file per process. A JAR path is launched with `java -jar`; Java must be available on `PATH`. An executable path can be used directly, or `sqflint` can be resolved from `PATH`.
+The manifest avoids assuming a particular source directory layout. Paths must be project-relative, remain inside the project root, exist, and use the \`.sqf\` extension. The adapter invokes SQF-VM once per file with \`--automated\`, \`--parse-only\`, and \`--input-sqf\`; it captures standard output, standard error, exit code, process duration, and timeout state. It does not treat a parse-only success as proof of runtime correctness or Arma 3 engine compatibility.
 
-The adapter requests JSON diagnostics and a nonzero error exit code. The configured `severity` controls whether findings fail validation or are reported as warnings. `tools.sqflint.arguments` appends additional CLI options. Set `tools.sqflint.required` to `true` to fail when the tool is unavailable; otherwise the module is skipped. The upstream CLI does not document a version query, so `tools.sqflint.version` is rejected rather than silently accepted as an unverified pin. SQFLint provides basic syntax/static diagnostics only; it does not execute code in Arma 3 or guarantee runtime correctness.
+Set \`tools.sqfvm.required\` to \`true\` to fail when the executable is unavailable; otherwise the module is skipped. The executable can be configured explicitly or resolved from \`PATH\` (\`sqfvm\`, \`sqfvm_x64\`, or their Windows executable names). A project-relative executable path is resolved against the project root. \`.ps1\` wrappers are supported for tests and custom launchers. \`tools.sqfvm.arguments\` appends additional arguments to each invocation; do not use it to override the adapter's automated or parse-only mode. The current upstream CLI documents command-line usage through \`-?\`; the adapter deliberately does not claim version pinning until a stable version-query contract is verified.
+
+SQF-VM implements a substantial subset of SQF but does not implement every Arma engine command. Its own documentation recommends checking command support with \`help__\`. Scripts that depend on unsupported engine commands may require test harness stubs or in-game testing. Runtime/unit-test execution should be implemented separately from this syntax-validation module so validation does not accidentally execute arbitrary mod initialization code.
 
 Run it with:
 
     ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Validate -Module Validation.SQF
+
