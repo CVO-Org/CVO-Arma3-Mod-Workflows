@@ -647,14 +647,14 @@ if ($args -contains '--fail') { exit 7 }
             $versionModePath = Join-Path $projectRoot 'version-mode.txt'
             $invocationLog = Join-Path $projectRoot 'invocations.log'
             'nonzero-matching' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
-            $commandsBeforeNonzeroVersionProbe = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\\s|$)' })
+            $commandsBeforeNonzeroVersionProbe = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' })
             $nonzeroVersionBuild = & $descriptor.Invoke $context 'Build'
             $nonzeroVersionBuild.Status | Should -Be 'Passed'
             $nonzeroVersionBuild.Data.Version | Should -Be '1.2.3'
             $nonzeroVersionBuild.Data.VersionExitCode | Should -Be 1
             $nonzeroVersionBuild.Data.Arguments | Should -Contain 'build'
             $nonzeroVersionBuild.Data.Output | Should -Match 'Mock received: build'
-            @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\\s|$)' }).Count | Should -Be ($commandsBeforeNonzeroVersionProbe.Count + 1)
+            @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' }).Count | Should -Be ($commandsBeforeNonzeroVersionProbe.Count + 1)
 
             'normal' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
             $invocationLog = Join-Path $projectRoot 'invocations.log'
