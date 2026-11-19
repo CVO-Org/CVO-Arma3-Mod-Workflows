@@ -53,7 +53,8 @@ Configure the executable when it is not available on `PATH`:
           "enabled": true,
           "path": "tools/hemtt.exe",
           "version": "1.21.0",
-          "arguments": ["--no-color"]
+          "arguments": ["--no-color"],
+          "timeout_seconds": 600
         }
       }
     }
@@ -67,11 +68,11 @@ Examples:
     ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Dev -Module Build.HEMTT
     ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Release -Module Build.HEMTT
 
-HEMTT output, process exit code, executable path, and output artifact paths are included in the module result. Artifact reporting compares file paths, sizes, and modification timestamps before and after execution, so unchanged files from earlier runs are excluded. The module scans `.hemttout/dev`, `.hemttout/build`, or `.hemttout/releases` as appropriate; release operations also scan the project-level `releases` directory. HEMTT itself remains an external dependency; the framework does not download or install it.
+HEMTT output, separate standard output and standard error, process exit code, executable path, timeout state, and output artifact paths are included in the module result. Processes run without a shell, in the project root, and are terminated after `tools.hemtt.timeout_seconds` (default: 600 seconds). Artifact reporting compares file paths, sizes, and modification timestamps before and after execution, so unchanged files from earlier runs are excluded. The module scans `.hemttout/dev`, `.hemttout/build`, or `.hemttout/releases` as appropriate; release operations also scan the project-level `releases` directory. HEMTT itself remains an external dependency; the framework does not download or install it.
 
 ## Current limitations
 
 - YAML requires `powershell-yaml`; JSON does not.
 - The HEMTT module is the first capability module; validation, testing, and release orchestration modules are not yet implemented.
-- The HEMTT module currently invokes the CLI synchronously and captures its output after process completion; cancellation, streaming log forwarding, and configurable artifact-copying are future work.
+- HEMTT output is captured after process completion; live streaming log forwarding and configurable artifact-copying are future work.
 - The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
