@@ -571,6 +571,7 @@ if ($args -contains '--version') {
     $versionMode = if (Test-Path -LiteralPath $versionModePath) { (Get-Content -LiteralPath $versionModePath -Raw).Trim() } else { 'normal' }
     switch ($versionMode) {
         'fail' { [Console]::Error.WriteLine('Mock version probe failed'); exit 9 }
+        'nonzero-matching' { [Console]::Error.WriteLine('hemtt v1.2.3'); exit 1 }
         'unparseable' { Write-Output 'development build'; exit 0 }
         'sleep' { Start-Sleep -Seconds 3; Write-Output '1.2.3'; exit 0 }
         default { Write-Output '1.2.3' }
@@ -644,6 +645,18 @@ if ($args -contains '--fail') { exit 7 }
             $buildResult.Data.StandardError | Should -Match 'Mock stderr'
 
             $versionModePath = Join-Path $projectRoot 'version-mode.txt'
+            $invocationLog = Join-Path $projectRoot 'invocations.log'
+            'nonzero-matching' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
+            $commandsBeforeNonzeroVersionProbe = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\\s|$)' })
+            $nonzeroVersionBuild = & $descriptor.Invoke $context 'Build'
+            $nonzeroVersionBuild.Status | Should -Be 'Passed'
+            $nonzeroVersionBuild.Data.Version | Should -Be '1.2.3'
+            $nonzeroVersionBuild.Data.VersionExitCode | Should -Be 1
+            $nonzeroVersionBuild.Data.Arguments | Should -Contain 'build'
+            $nonzeroVersionBuild.Data.Output | Should -Match 'Mock received: build'
+            @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\\s|$)' }).Count | Should -Be ($commandsBeforeNonzeroVersionProbe.Count + 1)
+
+            'normal' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
             $invocationLog = Join-Path $projectRoot 'invocations.log'
             $buildInvocationsBeforeProbeFailures = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' })
 
