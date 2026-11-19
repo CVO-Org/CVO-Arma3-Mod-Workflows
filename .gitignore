@@ -1,0 +1,28 @@
+# PowerShell / test output
+*.log
+*.trx
+TestResults/
+.coverage/
+coverage/
+
+# Framework-generated output
+.build/
+.arma3-workflows/
+reports/
+artifacts/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.local.yml
+*.local.yaml
+
+# Editor / operating system
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
