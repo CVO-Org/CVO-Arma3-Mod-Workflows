@@ -11,7 +11,7 @@ It is not a distributed transaction. The workflow makes partial completion visib
 
 ## Release invariants
 
-1. The input tag must be a semantic version tag that already exists in the consuming repository.
+1. The workflow must be triggered by pushing a semantic-version tag that already exists in the consuming repository.
 2. The tag must resolve to the exact commit that triggered the workflow.
 3. HEMTT release runs once per workflow run.
 4. One prepared payload is shared by all enabled destinations.
@@ -58,7 +58,7 @@ The Steam job verifies the archive checksum, file count, file sizes, and per-fil
 
 The GitHub draft job creates or updates a draft release for the existing tag and attaches the ZIP, checksum, and manifest. The final publication job changes the draft to a published release only after all enabled destinations succeed.
 
-The workflow uses the triggering commit as the tag target. It does not create a new version tag on a different commit.
+The workflow uses the triggering commit as the tag target. It does not create a new version tag on a different commit. It does not rerun the complete validation and SQF-VM test matrix; consuming repositories should make those checks required before maintainers create a release tag.
 
 ## Steam Workshop behavior
 
