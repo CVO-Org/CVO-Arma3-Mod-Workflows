@@ -103,3 +103,30 @@ HEMTT output, separate standard output and standard error, process exit code, ex
 - The HEMTT module is the first capability module; validation, testing, and release orchestration modules are not yet implemented.
 - HEMTT output is captured after process completion; live streaming log forwarding and configurable artifact-copying are future work.
 - The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
+
+
+## Config contract validation module
+
+The framework discovers `Validation.Config` when `modules.validation.enabled` is true. It checks explicitly declared class expectations in config source files; it does not parse the full Arma config language or duplicate HEMTT's checks.
+
+Configure required class declarations:
+
+    {
+      "schema_version": 1,
+      "validation": {
+        "config": {
+          "enabled": true,
+          "severity": "error",
+          "required_classes": [
+            { "path": "addons/example/config.cpp", "name": "CfgPatches" },
+            { "path": "addons/example/config.cpp", "name": "Example_Addon" }
+          ]
+        }
+      }
+    }
+
+Paths must be project-relative and remain inside the project root. The class check recognizes declarations with a class body, including nested declarations, and ignores class-like text in comments and quoted strings. It does not resolve inheritance or preprocessor macros. An empty list is reported as `Skipped`, not `Passed`. Set severity to `warning` to report missing config files or classes without failing validation.
+
+Run it with:
+
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Validate -Module Validation.Config
