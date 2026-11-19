@@ -140,6 +140,7 @@
             return $builder.ToString()
         }
 
+        $validatedTestFiles = New-Object System.Collections.Generic.List[object]
         foreach ($fileValue in $files) {
             $relativePath = [string]$fileValue
             $resolved = & $resolveProjectFile $relativePath 'SQF-VM test script' '.sqf'
@@ -148,13 +149,34 @@
                 $findings.Add($finding)
                 $errors.Add($finding)
                 $checks.Add([pscustomobject]@{ Path = $relativePath; Status = 'Failed'; ExitCode = $null; TimedOut = $false })
-                continue
             }
+            else {
+                $validatedTestFiles.Add([pscustomobject]@{ RelativePath = $relativePath; Path = $resolved.Path })
+            }
+        }
 
+        if ($errors.Count -gt 0) {
+            $watch.Stop()
+            return (New-A3WorkflowModuleResult -Module 'Testing.SQFVM' -Operation $Operation -Status Failed -Summary 'SQF-VM test manifest is invalid; no test scripts were executed.' -Errors @($errors.ToArray()) -StartedAt $started -DurationMs ([Math]::Max(1, $watch.ElapsedMilliseconds)) -Data @{
+                Checks = @($checks.ToArray())
+                TestCount = 0
+                PassedCount = 0
+                FailedCount = @($checks | Where-Object { $_.Status -eq 'Failed' }).Count
+                Processes = @()
+                Tool = @{ Name = 'SQF-VM'; Path = $toolPath; Version = $null }
+                ProjectRoot = $projectRoot
+                ExecutionMode = 'ExplicitTestScripts'
+                MaxRuntimeMs = $maxRuntimeMs
+            })
+        }
+
+        foreach ($validatedFile in $validatedTestFiles) {
+            $relativePath = $validatedFile.RelativePath
+            $resolvedPath = $validatedFile.Path
             $arguments = $processPrefix + @('--automated', '--suppress-welcome', '--no-execute-print')
             if ($maxRuntimeMs -gt 0) { $arguments += @('--max-runtime', [string]$maxRuntimeMs) }
             foreach ($configPath in $validatedConfigs) { $arguments += @('--input-config', $configPath) }
-            $arguments += @('--input-sqf', $resolved.Path)
+            $arguments += @('--input-sqf', $resolvedPath)
             $arguments += $extraArguments
             $quoted = @()
             foreach ($argument in $arguments) { $quoted += (& $quoteArgument ([string]$argument)) }
