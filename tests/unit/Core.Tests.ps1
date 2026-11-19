@@ -72,14 +72,14 @@ Describe 'Arma3 Mod Workflows core' {
         $moduleDirectory = Join-Path $root 'Build'
         New-Item -ItemType Directory -Path $moduleDirectory -Force | Out-Null
         try {
-            @"
+            @'
 @{
     Id = 'Build.Sample'
     ConfigKey = 'build'
     Operations = @('Run')
     Invoke = { param($Context, $Operation) return @{ Executed = $true } }
 }
-"@ | Set-Content -LiteralPath (Join-Path $moduleDirectory 'Module.ps1') -Encoding UTF8
+'@ | Set-Content -LiteralPath (Join-Path $moduleDirectory 'Module.ps1') -Encoding UTF8
             $registry = New-A3WorkflowModuleRegistry
             $configuration = @{ modules = @{ build = @{ enabled = $true } } }
             $discovery = Import-A3WorkflowModules -Registry $registry -ModulesRoot $root -Configuration $configuration
@@ -94,13 +94,13 @@ Describe 'Arma3 Mod Workflows core' {
         $moduleDirectory = Join-Path $root 'Build'
         New-Item -ItemType Directory -Path $moduleDirectory -Force | Out-Null
         try {
-            @"
+            @'
 @{
     Id = 'Build.Disabled'
     ConfigKey = 'build'
     Invoke = { param($Context, $Operation) return @{ Executed = $true } }
 }
-"@ | Set-Content -LiteralPath (Join-Path $moduleDirectory 'Module.ps1') -Encoding UTF8
+'@ | Set-Content -LiteralPath (Join-Path $moduleDirectory 'Module.ps1') -Encoding UTF8
             $registry = New-A3WorkflowModuleRegistry
             $configuration = @{ modules = @{ build = @{ enabled = $false } } }
             $discovery = Import-A3WorkflowModules -Registry $registry -ModulesRoot $root -Configuration $configuration
