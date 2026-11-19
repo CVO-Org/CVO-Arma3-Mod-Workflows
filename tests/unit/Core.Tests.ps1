@@ -1342,7 +1342,7 @@ exit 7
     It 'validates SQF-VM testing configuration against the schema' {
         $valid = @{ schema_version = 1; testing = @{ sqfvm = @{ enabled = $true; files = @('tests/main.sqf'); config_files = @('addons/example/config.cpp'); max_runtime_ms = 30000 } }; tools = @{ sqfvm = @{ path = 'tools/sqfvm.exe'; timeout_seconds = 60 } } }
         (Test-A3WorkflowConfiguration -Configuration $valid).IsValid | Should -BeTrue
-        $invalid = @{ schema_version = 1; testing = @{ sqfvm = @{ files = @(42); max_runtime_ms = -1 } } }
+        $invalid = @{ schema_version = 1; testing = @{ sqfvm = @{ files = @(42); max_runtime_ms = 'fast' } } }
         (Test-A3WorkflowConfiguration -Configuration $invalid).IsValid | Should -BeFalse
     }
 }
