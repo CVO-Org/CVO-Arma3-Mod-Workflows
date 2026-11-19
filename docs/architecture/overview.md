@@ -59,6 +59,10 @@ HEMTT remains the authoritative build and packaging tool when a project uses it.
 
 See [Validation architecture](validation.md) for the validation pipeline, category ownership, normalized finding contract, and compatibility requirements.
 
+## Initial reusable workflow
+
+The first callable workflow is `.github/workflows/hemtt.yml`. It runs on Windows, checks out the consuming project and a separately pinned framework revision, installs a selected HEMTT version through the pinned `arma-actions/hemtt` action, invokes `Build.HEMTT`, and uploads operation-specific build artifacts. The caller must pass the same immutable framework tag or commit in both the reusable workflow reference and its required `framework-ref` input. The workflow is build-only; it does not publish GitHub Releases or Steam Workshop content.
+
 ## Execution environments
 
 - **Local:** Windows-first, PowerShell interface, with clear prerequisite checks.
