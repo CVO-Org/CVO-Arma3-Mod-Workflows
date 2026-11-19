@@ -235,7 +235,11 @@ function Invoke-A3WorkflowExternalProcess {
 
         try {
             if ($Operation -ne 'Detect') {
-                $versionProcess = Invoke-A3WorkflowExternalProcess -FilePath $executable -Arguments @('--version') -TimeoutSeconds $timeoutSeconds -WorkingDirectory $projectRoot
+                $versionArguments = @('--version')
+                if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.arguments) {
+                    $versionArguments += @($toolConfiguration.arguments)
+                }
+                $versionProcess = Invoke-A3WorkflowExternalProcess -FilePath $executable -Arguments $versionArguments -TimeoutSeconds $timeoutSeconds -WorkingDirectory $projectRoot
                 $versionExitCode = $versionProcess.ExitCode
                 $processDurationMs += $versionProcess.DurationMs
                 $versionStandardOutput = $versionProcess.StdOut
