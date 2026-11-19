@@ -85,6 +85,25 @@
             $commandArguments += @($toolConfiguration.arguments)
         }
 
+        $artifactDirectories = @()
+        switch ($Operation) {
+            'Dev' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/dev') }
+            'Build' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/build') }
+            'Release' {
+                $artifactDirectories += (Join-Path $projectRoot '.hemttout/releases')
+                $artifactDirectories += (Join-Path $projectRoot 'releases')
+            }
+            'Run' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/build') }
+        }
+        $artifactSnapshot = @{}
+        foreach ($directory in $artifactDirectories) {
+            if (Test-Path -LiteralPath $directory -PathType Container) {
+                Get-ChildItem -LiteralPath $directory -File -Recurse -Force | ForEach-Object {
+                    $artifactSnapshot[$_.FullName] = "$($_.Length):$($_.LastWriteTimeUtc.Ticks)"
+                }
+            }
+        }
+
         $previousLocation = Get-Location
         $outputLines = @()
         $versionOutputLines = @()
@@ -150,22 +169,17 @@
         finally {
             Set-Location -LiteralPath $previousLocation
         }
-        $artifactDirectories = @()
-        switch ($Operation) {
-            'Dev' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/dev') }
-            'Build' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/build') }
-            'Release' {
-                $artifactDirectories += (Join-Path $projectRoot '.hemttout/releases')
-                $artifactDirectories += (Join-Path $projectRoot 'releases')
-            }
-            'Run' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/build') }
-        }
         $artifactDirectory = $null
         if ($artifactDirectories.Count -gt 0) { $artifactDirectory = $artifactDirectories[0] }
         $artifacts = @()
         foreach ($directory in $artifactDirectories) {
             if (Test-Path -LiteralPath $directory -PathType Container) {
-                $artifacts += @(Get-ChildItem -LiteralPath $directory -Force -Recurse | ForEach-Object { $_.FullName })
+                Get-ChildItem -LiteralPath $directory -File -Force -Recurse | ForEach-Object {
+                    $signature = "$($_.Length):$($_.LastWriteTimeUtc.Ticks)"
+                    if (-not $artifactSnapshot.ContainsKey($_.FullName) -or $artifactSnapshot[$_.FullName] -ne $signature) {
+                        $artifacts += $_.FullName
+                    }
+                }
             }
         }
 
