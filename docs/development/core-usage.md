@@ -97,10 +97,44 @@ Examples:
 
 HEMTT output, separate standard output and standard error, process exit code, executable path, timeout state, and output artifact paths are included in the module result. Processes run without a shell, in the project root, and are terminated after `tools.hemtt.timeout_seconds` (default: 600 seconds). On Windows, timeout cleanup attempts to terminate the full child-process tree with `taskkill /T /F`, then falls back to terminating the direct process. Process startup failures are returned in `Data.ProcessStartError` and `Data.StandardError` for diagnosis. Artifact reporting compares file paths, sizes, modification timestamps, and SHA-256 content hashes before and after execution, so unchanged files from earlier runs are excluded and same-size rewrites with preserved timestamps are still detected. Hashing adds file-read overhead for large output directories. The module scans `.hemttout/dev`, `.hemttout/build`, or `.hemttout/release` as appropriate; release operations also scan the project-level `releases` directory. HEMTT itself remains an external dependency; the framework does not download or install it.
 
+
+## Reusable HEMTT workflow
+
+The repository provides a callable Windows workflow at `.github/workflows/hemtt.yml`. A consuming repository can call it from its own workflow:
+
+    name: Mod CI
+
+    on:
+      push:
+        branches: [main]
+      pull_request:
+
+    jobs:
+      hemtt:
+        uses: SkippieDippie/Arma3-Mod-Workflows/.github/workflows/hemtt.yml@YOUR_FRAMEWORK_REF
+        with:
+          framework-ref: YOUR_FRAMEWORK_REF
+          operation: Check
+          hemtt-version: v1.21.0
+
+Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The `uses` reference selects the reusable workflow; `framework-ref` separately tells the workflow which revision of the framework source to check out. Do not use a moving branch for production consumers.
+
+Supported inputs:
+
+- `operation`: `Detect`, `Check`, `Dev`, `Build`, or `Release` (default `Build`).
+- `framework-ref`: required immutable tag or commit SHA matching the `uses` reference.
+- `hemtt-version`: HEMTT version installed by the pinned `arma-actions/hemtt` action (default `v1.21.0`).
+- `project-root`: consuming project directory relative to the checkout root (default `.`).
+- `config-path`: optional configuration path passed to the framework CLI.
+- `artifact-path`: optional custom artifact glob or multiline list; otherwise the workflow uploads the HEMTT operation's standard output directory. Release also uploads the project-level `releases/` directory when present.
+- `fail-on-warning`: optionally make framework warnings fail the job.
+
+The workflow requests only `contents: read`. It does not receive publishing secrets, create GitHub Releases, publish to Steam Workshop, or attempt to run Arma 3. The HEMTT setup action is pinned to a commit SHA. Artifact upload is required for Dev/Build/Release output (and fails if the expected primary output is absent); the additional project-level release directory is optional.
+
 ## Current limitations
 
 - YAML requires `powershell-yaml`; JSON does not.
-- The HEMTT module is the first capability module; validation, testing, and release orchestration modules are not yet implemented.
+- The HEMTT reusable workflow is the first callable workflow; validation/testing workflow composition and release publication orchestration are not yet implemented.
 - HEMTT output is captured after process completion; live streaming log forwarding and configurable artifact-copying are future work.
 - The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
 
