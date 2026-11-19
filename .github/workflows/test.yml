@@ -30,7 +30,7 @@ on:
 
 
     secrets:
-      framework-token:
+      framework_token:
         description: Fine-grained token with contents:read access to the private framework repository
         required: true
 
@@ -51,7 +51,7 @@ jobs:
           repository: SkippieDippie/Arma3-Mod-Workflows
           ref: ${{ inputs['framework-ref'] }}
           path: .arma3-workflows
-          token: ${{ secrets.framework-token }}
+          token: ${{ secrets.framework_token }}
           persist-credentials: false
 
       - name: Install SQF-VM
