@@ -73,6 +73,16 @@ Describe 'Arma3 Mod Workflows core' {
         (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeTrue
     }
 
+    It 'accepts HEMTT check-specific arguments' {
+        $config = @{ schema_version = 1; tools = @{ hemtt = @{ check_arguments = @('--pedantic', '--error-on-all', '--lints', 's01-invalid-command') } } }
+        (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeTrue
+    }
+
+    It 'rejects non-string HEMTT check-specific arguments' {
+        $config = @{ schema_version = 1; tools = @{ hemtt = @{ check_arguments = @('--pedantic', 42) } } }
+        (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
+    }
+
     It 'rejects malformed HEMTT version pins' {
         $config = @{ schema_version = 1; tools = @{ hemtt = @{ version = '1.21' } } }
         (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
@@ -598,7 +608,7 @@ if ($args -contains '--fail') { exit 7 }
                 ProjectRoot = $projectRoot
                 Configuration = @{
                     paths = @{ hemtt_config = '.hemtt/project.toml' }
-                    tools = @{ hemtt = @{ path = 'mock-hemtt.ps1'; version = '1.2.3'; arguments = @('--mock-option', 'value with spaces') } }
+                    tools = @{ hemtt = @{ path = 'mock-hemtt.ps1'; version = '1.2.3'; arguments = @('--mock-option', 'value with spaces'); check_arguments = @('--pedantic', '--error-on-all', '--lints', 's01-invalid-command') } }
                 }
                 Logger = $null
             }
@@ -696,6 +706,15 @@ if ($args -contains '--fail') { exit 7 }
                 $operationResult = & $descriptor.Invoke $context $operationCase.Operation
                 $operationResult.Status | Should -Be 'Passed'
                 $operationResult.Data.Arguments[0] | Should -Be $operationCase.Command
+                if ($operationCase.Operation -eq 'Check') {
+                    $operationResult.Data.Arguments | Should -Contain '--pedantic'
+                    $operationResult.Data.Arguments | Should -Contain '--error-on-all'
+                    $operationResult.Data.Arguments | Should -Contain '--lints'
+                    $operationResult.Data.Arguments | Should -Contain 's01-invalid-command'
+                }
+                else {
+                    $operationResult.Data.Arguments | Should -Not -Contain '--pedantic'
+                }
                 (Get-Location).Path | Should -Be $locationBefore
             }
 
