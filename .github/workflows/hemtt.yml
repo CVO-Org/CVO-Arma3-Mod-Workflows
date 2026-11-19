@@ -54,6 +54,8 @@ jobs:
     steps:
       - name: Check out consuming project
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Check out framework at the reusable workflow revision
         uses: actions/checkout@v5
