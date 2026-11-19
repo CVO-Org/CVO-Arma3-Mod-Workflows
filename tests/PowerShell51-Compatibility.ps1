@@ -26,7 +26,7 @@ exit 0
     'name = "PS51Compatibility"' | Set-Content -LiteralPath (Join-Path $hemttDirectory 'project.toml') -Encoding UTF8
     'systemChat "PS51 SQF-VM smoke test";' | Set-Content -LiteralPath (Join-Path $sqfDirectory 'init.sqf') -Encoding UTF8
     @'
-if ($args -contains '--parse-only' -and $args -contains '--input-sqf' -and $args -contains '--automated') {
+if ($args -contains '--input-sqf' -and $args -contains '--automated') {
     Write-Output 'Mock SQF-VM parse passed.'
     exit 0
 }
