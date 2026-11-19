@@ -8,8 +8,23 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 jobs:
+  workflow-lint:
+    name: Lint GitHub Actions workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Run actionlint
+        uses: reviewdog/action-actionlint@6c5efc3e507f3a0678fe69e82423dfe41edc86b8
+        with:
+          reporter: github-check
+          filter_mode: nofilter
+          fail_level: error
+
   powershell-core:
     runs-on: windows-latest
     steps:
