@@ -1,0 +1,112 @@
+name: HEMTT
+
+on:
+  workflow_call:
+    inputs:
+      operation:
+        description: HEMTT operation to run
+        required: false
+        type: string
+        default: Build
+      hemtt-version:
+        description: HEMTT version passed to arma-actions/hemtt
+        required: false
+        type: string
+        default: v1.22.0
+      project-root:
+        description: Project root relative to the caller repository workspace
+        required: false
+        type: string
+        default: .
+      config-path:
+        description: Optional framework configuration path relative to project root
+        required: false
+        type: string
+        default: ''
+      artifact-path:
+        description: Optional custom artifact upload path or multiline path list; defaults depend on operation
+        required: false
+        type: string
+        default: ''
+      fail-on-warning:
+        description: Fail when the framework reports a warning
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  hemtt:
+    name: HEMTT \${{ inputs.operation }}
+    runs-on: windows-latest
+    steps:
+      - name: Check out consuming project
+        uses: actions/checkout@v5
+
+      - name: Check out framework at the reusable workflow revision
+        uses: actions/checkout@v5
+        with:
+          repository: SkippieDippie/Arma3-Mod-Workflows
+          ref: \${{ github.workflow_sha }}
+          path: .arma3-workflows
+          persist-credentials: false
+
+      - name: Set up HEMTT
+        uses: arma-actions/hemtt@a0570ddd80d2b7be9c0f052494c0f700b42668dd
+        with:
+          version: \${{ inputs.hemtt-version }}
+
+      - name: Run framework HEMTT module
+        shell: pwsh
+        env:
+          FRAMEWORK_SCRIPT: \${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
+          PROJECT_ROOT: \${{ inputs.project-root }}
+          CONFIG_PATH: \${{ inputs.config-path }}
+          OPERATION: \${{ inputs.operation }}
+          FAIL_ON_WARNING: \${{ inputs.fail-on-warning }}
+        run: |
+          $allowed = @('Detect', 'Check', 'Dev', 'Build', 'Release')
+          if ($env:OPERATION -notin $allowed) {
+            throw "Unsupported HEMTT operation '$env:OPERATION'. Allowed operations: $($allowed -join ', ')."
+          }
+
+          $arguments = @(
+            '-ProjectRoot', $env:PROJECT_ROOT,
+            '-Operation', $env:OPERATION,
+            '-Module', 'Build.HEMTT'
+          )
+          if (-not [string]::IsNullOrWhiteSpace($env:CONFIG_PATH)) {
+            $arguments += @('-ConfigPath', $env:CONFIG_PATH)
+          }
+          if ($env:FAIL_ON_WARNING -eq 'true') {
+            $arguments += '-FailOnWarning'
+          }
+
+          & $env:FRAMEWORK_SCRIPT @arguments
+
+      - name: Upload development build
+        if: \${{ inputs.operation == 'Dev' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hemtt-dev-\${{ github.run_id }}-\${{ github.run_attempt }}
+          path: \${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/dev/**' }}
+          if-no-files-found: error
+
+      - name: Upload test build
+        if: \${{ inputs.operation == 'Build' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hemtt-build-\${{ github.run_id }}-\${{ github.run_attempt }}
+          path: \${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/build/**' }}
+          if-no-files-found: error
+
+      - name: Upload release build
+        if: \${{ inputs.operation == 'Release' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hemtt-release-\${{ github.run_id }}-\${{ github.run_attempt }}
+          path: \${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/release/**
+releases/**' }}
+          if-no-files-found: error
