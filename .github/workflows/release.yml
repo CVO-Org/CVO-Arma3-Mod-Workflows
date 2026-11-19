@@ -72,7 +72,7 @@ permissions:
 
 jobs:
   release:
-    name: Build and publish ${ inputs['release-folder'] }
+    name: Build and publish ${{ inputs['release-folder'] }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -80,21 +80,21 @@ jobs:
       - name: Check out the tagged project source
         uses: actions/checkout@v4
         with:
-          ref: ${ inputs['release-tag'] }
+          ref: ${{ inputs['release-tag'] }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Validate release configuration
         shell: pwsh
         env:
-          RELEASE_TAG: ${ inputs['release-tag'] }
-          WORKSHOP_ID: ${ inputs['workshop-id'] }
-          WORKSHOP_NAME: ${ inputs['workshop-name'] }
-          RELEASE_FOLDER: ${ inputs['release-folder'] }
-          PUBLISH_GITHUB: ${ inputs['publish-github'] }
-          PUBLISH_STEAM: ${ inputs['publish-steam'] }
-          STEAM_USERNAME: ${ secrets.steam_username }
-          STEAM_PASSWORD: ${ secrets.steam_password }
+          RELEASE_TAG: ${{ inputs['release-tag'] }}
+          WORKSHOP_ID: ${{ inputs['workshop-id'] }}
+          WORKSHOP_NAME: ${{ inputs['workshop-name'] }}
+          RELEASE_FOLDER: ${{ inputs['release-folder'] }}
+          PUBLISH_GITHUB: ${{ inputs['publish-github'] }}
+          PUBLISH_STEAM: ${{ inputs['publish-steam'] }}
+          STEAM_USERNAME: ${{ secrets.steam_username }}
+          STEAM_PASSWORD: ${{ secrets.steam_password }}
         run: |
           if ($env:RELEASE_TAG -notmatch '^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:[-+][0-9A-Za-z.-]+|\.RC\..*)?$') {
             throw "Release tag '$env:RELEASE_TAG' is not a supported version tag."
@@ -119,17 +119,17 @@ jobs:
       - name: Set up HEMTT
         uses: arma-actions/hemtt@a0570ddd80d2b7be9c0f052494c0f700b42668dd
         with:
-          version: ${ inputs['hemtt-version'] }
+          version: ${{ inputs['hemtt-version'] }}
 
       - name: Prepare version header and Workshop metadata
         shell: pwsh
-        working-directory: ${ inputs['project-root'] }
+        working-directory: ${{ inputs['project-root'] }}
         env:
-          RELEASE_TAG: ${ inputs['release-tag'] }
-          VERSION_HEADER_PATH: ${ inputs['version-header-path'] }
-          META_FILE_PATH: ${ inputs['meta-file-path'] }
-          WORKSHOP_ID: ${ inputs['workshop-id'] }
-          WORKSHOP_NAME: ${ inputs['workshop-name'] }
+          RELEASE_TAG: ${{ inputs['release-tag'] }}
+          VERSION_HEADER_PATH: ${{ inputs['version-header-path'] }}
+          META_FILE_PATH: ${{ inputs['meta-file-path'] }}
+          WORKSHOP_ID: ${{ inputs['workshop-id'] }}
+          WORKSHOP_NAME: ${{ inputs['workshop-name'] }}
         run: |
           if ($env:RELEASE_TAG -notmatch '^v?(?<major>0|[1-9][0-9]*)\.(?<minor>0|[1-9][0-9]*)\.(?<patch>0|[1-9][0-9]*)(?:[-+][0-9A-Za-z.-]+|\.RC\..*)?$') {
             throw "Cannot extract semantic version from '$env:RELEASE_TAG'."
@@ -167,15 +167,15 @@ jobs:
 
       - name: Build HEMTT release
         shell: bash
-        working-directory: ${ inputs['project-root'] }
+        working-directory: ${{ inputs['project-root'] }}
         run: hemtt release --no-archive
 
       - name: Package release folder
         shell: pwsh
-        working-directory: ${ inputs['project-root'] }
+        working-directory: ${{ inputs['project-root'] }}
         env:
-          RELEASE_TAG: ${ inputs['release-tag'] }
-          RELEASE_FOLDER: ${ inputs['release-folder'] }
+          RELEASE_TAG: ${{ inputs['release-tag'] }}
+          RELEASE_FOLDER: ${{ inputs['release-folder'] }}
         run: |
           $source = Join-Path (Get-Location) '.hemttout/release'
           if (-not (Test-Path -LiteralPath $source -PathType Container)) {
@@ -196,30 +196,30 @@ jobs:
           Write-Host "Packaged $destination"
 
       - name: Attach ZIP to GitHub Release draft
-        if: ${ inputs['publish-github'] }
+        if: ${{ inputs['publish-github'] }}
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3
         with:
-          tag_name: ${ inputs['release-tag'] }
+          tag_name: ${{ inputs['release-tag'] }}
           draft: true
-          prerelease: ${ inputs.prerelease }
-          files: ${ inputs['project-root'] }/${ inputs['release-folder'] }-${ inputs['release-tag'] }.zip
+          prerelease: ${{ inputs.prerelease }}
+          files: ${{ inputs['project-root'] }}/${{ inputs['release-folder'] }}-${{ inputs['release-tag'] }}.zip
           fail_on_unmatched_files: true
 
       - name: Upload to Steam Workshop
-        if: ${ inputs['publish-steam'] }
+        if: ${{ inputs['publish-steam'] }}
         uses: arma-actions/workshop-upload@v1
         with:
-          itemId: ${ inputs['workshop-id'] }
-          contentPath: ${ inputs['project-root'] }/${ inputs['release-folder'] }-${ inputs['release-tag'] }
-          changelog: https://github.com/${ github.repository }}/releases/tag/${ inputs['release-tag'] }
+          itemId: ${{ inputs['workshop-id'] }}
+          contentPath: ${{ inputs['project-root'] }}/${{ inputs['release-folder'] }}-${{ inputs['release-tag'] }}
+          changelog: https://github.com/${{ github.repository }}}/releases/tag/${{ inputs['release-tag'] }}
         env:
-          STEAM_USERNAME: ${ secrets.steam_username }
-          STEAM_PASSWORD: ${ secrets.steam_password }
+          STEAM_USERNAME: ${{ secrets.steam_username }}
+          STEAM_PASSWORD: ${{ secrets.steam_password }}
 
       - name: Publish GitHub Release
-        if: ${ inputs['publish-github'] }
+        if: ${{ inputs['publish-github'] }}
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3
         with:
-          tag_name: ${ inputs['release-tag'] }
+          tag_name: ${{ inputs['release-tag'] }}
           draft: false
-          prerelease: ${ inputs.prerelease }
+          prerelease: ${{ inputs.prerelease }}
