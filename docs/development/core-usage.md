@@ -33,7 +33,7 @@ Modules execute in dependency order. Missing dependencies and circular dependenc
 ## Current limitations
 
 - YAML requires `powershell-yaml`; JSON does not.
-- The module registry currently uses explicit registration. File-based module discovery and config-driven module activation are not yet implemented.
+- Framework modules are discovered from immediate child folders of `src/Modules`, each containing a `Module.ps1` descriptor. Configuration uses `modules.<ConfigKey>.enabled`; absent keys default to enabled. Project-specific modules may still be registered explicitly.
 - No build, validation, testing, or release capability modules are registered yet.
 - A unified public command-line entry point is not yet implemented; the current public interface is the exported PowerShell module functions.
 - The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
