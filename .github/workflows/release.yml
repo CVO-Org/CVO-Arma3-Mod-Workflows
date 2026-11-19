@@ -250,7 +250,7 @@ jobs:
           Write-Host "Release archive SHA-256: $archiveHash"
 
       - name: Upload release payload
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: arma3-release-payload-${{ github.run_id }}
           path: release-payload/**
@@ -267,7 +267,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Download prepared release payload
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: arma3-release-payload-${{ github.run_id }}
           path: release-artifact
@@ -296,7 +296,7 @@ jobs:
     runs-on: [self-hosted, Windows, X64, arma3-publisher]
     steps:
       - name: Download exact release payload
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: arma3-release-payload-${{ github.run_id }}
           path: release-artifact
