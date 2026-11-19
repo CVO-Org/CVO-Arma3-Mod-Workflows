@@ -1,0 +1,100 @@
+name: Validate
+
+on:
+  workflow_call:
+    inputs:
+      framework-ref:
+        description: Immutable tag or commit used to reference this reusable workflow
+        required: true
+        type: string
+      project-root:
+        description: Project root relative to the caller repository workspace
+        required: false
+        type: string
+        default: .
+      config-path:
+        description: Optional framework configuration path relative to project root
+        required: false
+        type: string
+        default: ''
+      modules:
+        description: Validation module IDs, separated by commas or newlines
+        required: false
+        type: string
+        default: |
+          Validation.Assets
+          Validation.Config
+          Validation.Dependencies
+          Validation.SQF
+          Validation.Package
+      fail-on-warning:
+        description: Fail when any selected validation module reports a warning
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Arma 3 validation
+    runs-on: windows-latest
+    steps:
+      - name: Check out consuming project
+        uses: actions/checkout@v5
+
+      - name: Check out framework at the pinned revision
+        uses: actions/checkout@v5
+        with:
+          repository: SkippieDippie/Arma3-Mod-Workflows
+          ref: \${{ inputs.framework-ref }}
+          path: .arma3-workflows
+          persist-credentials: false
+
+      - name: Run framework validation modules
+        shell: pwsh
+        env:
+          FRAMEWORK_SCRIPT: \${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
+          PROJECT_ROOT: \${{ inputs.project-root }}
+          CONFIG_PATH: \${{ inputs.config-path }}
+          MODULES: \${{ inputs.modules }}
+          FAIL_ON_WARNING: \${{ inputs.fail-on-warning }}
+        run: |
+          $allowed = @(
+            'Validation.Assets',
+            'Validation.Config',
+            'Validation.Dependencies',
+            'Validation.SQF',
+            'Validation.Package'
+          )
+
+          $moduleIds = @(
+            $env:MODULES -split '[,\r\n]+' |
+              ForEach-Object { $_.Trim() } |
+              Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+          )
+
+          if ($moduleIds.Count -eq 0) {
+            throw 'At least one validation module must be selected.'
+          }
+
+          $invalid = @($moduleIds | Where-Object { $_ -notin $allowed })
+          if ($invalid.Count -gt 0) {
+            throw "Unsupported validation module(s): $($invalid -join ', '). Allowed modules: $($allowed -join ', ')."
+          }
+
+          $arguments = @(
+            '-ProjectRoot', $env:PROJECT_ROOT,
+            '-Operation', 'Validate',
+            '-Module'
+          ) + $moduleIds
+
+          if (-not [string]::IsNullOrWhiteSpace($env:CONFIG_PATH)) {
+            $arguments += @('-ConfigPath', $env:CONFIG_PATH)
+          }
+          if ($env:FAIL_ON_WARNING -eq 'true') {
+            $arguments += '-FailOnWarning'
+          }
+
+          & $env:FRAMEWORK_SCRIPT @arguments
