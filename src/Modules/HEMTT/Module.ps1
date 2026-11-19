@@ -187,6 +187,8 @@ function Invoke-A3WorkflowExternalProcess {
         $versionExitCode = 0
         $version = $null
         $versionOutputText = ''
+        $versionStandardOutput = ''
+        $versionStandardError = ''
         $outputText = ''
         $versionMismatch = $false
         $timedOut = $false
@@ -206,7 +208,9 @@ function Invoke-A3WorkflowExternalProcess {
                 $versionProcess = Invoke-A3WorkflowExternalProcess -FilePath $executable -Arguments @('--version') -TimeoutSeconds $timeoutSeconds -WorkingDirectory $projectRoot
                 $versionExitCode = $versionProcess.ExitCode
                 $processDurationMs += $versionProcess.DurationMs
-                $versionOutputText = ($versionProcess.StdOut + [Environment]::NewLine + $versionProcess.StdErr).Trim()
+                $versionStandardOutput = $versionProcess.StdOut
+                $versionStandardError = $versionProcess.StdErr
+                $versionOutputText = ($versionStandardOutput + [Environment]::NewLine + $versionStandardError).Trim()
                 if ($versionProcess.TimedOut) {
                     $timedOut = $true
                     $exitCode = 124
@@ -282,6 +286,8 @@ function Invoke-A3WorkflowExternalProcess {
             Version = $version
             ExpectedVersion = if ($toolConfiguration -is [System.Collections.IDictionary]) { $toolConfiguration.version } else { $null }
             VersionOutput = $versionOutputText
+            VersionStandardOutput = $versionStandardOutput
+            VersionStandardError = $versionStandardError
             VersionExitCode = [int]$versionExitCode
             VersionMismatch = $versionMismatch
             Arguments = $commandArguments
