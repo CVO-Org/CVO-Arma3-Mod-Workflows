@@ -206,59 +206,60 @@ Each configured test script runs in its own SQF-VM process. This is SQF-VM runti
 
 ## Reusable release workflow
 
-The callable `.github/workflows/release.yml` workflow builds a release once and distributes the same HEMTT output to the enabled destinations. The release tag must already exist in the consuming repository and point to the exact commit that triggered the workflow.
+The callable `.github/workflows/release.yml` workflow owns HEMTT release preparation, packaging, GitHub Release asset attachment, and optional Steam Workshop upload. It is called from a consuming repository's GitHub Release event.
 
-Example caller workflow (replace the framework SHA and Workshop ID):
+Example caller (the example uses one release variant):
 
-    name: Release
+    name: Mod release
     on:
-      push:
-        tags: ['v*']
+      release:
+        types: [prereleased, released]
+
+    permissions:
+      contents: read
 
     jobs:
       release:
         uses: SkippieDippie/Arma3-Mod-Workflows/.github/workflows/release.yml@YOUR_FRAMEWORK_REF
         with:
-          framework-ref: YOUR_FRAMEWORK_REF
-          release-tag: ${{ github.ref_name }}
+          release-tag: ${{ github.event.release.tag_name }}
+          workshop-id: '1234567890'
+          workshop-name: 'Example Mod'
+          release-folder: '@Example-Mod'
           publish-github: true
           publish-steam: true
-          workshop-id: '1234567890'
-          publisher-path: 'C:\Program Files (x86)\Steam\steamapps\common\Arma 3 Tools\Publisher\PublisherCmd.exe'
-          steam-change-note: 'See the GitHub release notes for details.'
+          prerelease: ${{ github.event.action == 'prereleased' }}
+          finalize-github: true
         secrets:
-          framework_token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
+          steam_username: ${{ secrets.STEAM_USERNAME }}
+          steam_password: ${{ secrets.STEAM_PASSWORD }}
 
-Required setup:
+Pin `YOUR_FRAMEWORK_REF` to an immutable commit SHA or release tag. The framework repository's Actions access settings must allow the consuming repository to call its reusable workflows. The framework repository is public, so no framework checkout token is required.
 
-- In the framework repository, configure **Settings → Actions → General → Access** to allow the consuming repositories to use its reusable workflows.
-- Create a fine-grained personal access token with **Contents: read** access to the private framework repository. Store it in each consuming repository as `FRAMEWORK_READ_TOKEN` and pass it as `secrets.framework_token` to each reusable workflow. The token is used only to check out the private framework source; checkout credentials are not persisted.
-- For Steam publishing, use a dedicated Windows self-hosted runner labelled `self-hosted`, `Windows`, `X64`, and `arma3-publisher`. Install Arma 3 Tools and set `publisher-path` to its `PublisherCmd.exe`. Restrict its runner group to trusted consuming repositories only.
-- Run the runner under the Windows account that owns the authenticated, online Steam client session. PublisherCmd communicates through the Steam client; do not put Steam passwords or Steam Guard codes in workflow YAML or repository secrets.
-- The Workshop item must already exist and be owned/managed by the authenticated Steam account. Supply its numeric ID and a non-empty change note. This workflow updates an existing item; it does not create a new Workshop item or edit its title, description, preview, tags, or visibility.
-- Ensure the account has accepted the Steamworks agreement and that the Workshop item is configured as an Arma 3 Mod.
-- Protect the release tag pattern (for example, `v*`) so only trusted maintainers can create or move release tags. The workflow requires a tag-push event and verifies that the tag resolves to the triggering commit.
-- Gate release-tag creation on the consuming repository's validation and testing CI. This release workflow performs release-tag, HEMTT build, and payload integrity checks; it does not rerun the complete validation and SQF-VM test workflows.
+Required Steam setup:
+
+- Add repository secrets `STEAM_USERNAME` and `STEAM_PASSWORD`.
+- The target Workshop item must already exist.
+- The Steam account must be authorized to update the item and satisfy Steam's account/game ownership requirements.
+- Keep credentials out of workflow inputs and project configuration.
 
 Inputs:
 
-- `framework-ref`: immutable tag or commit SHA matching the reusable workflow ref.
-- `release-tag`: existing semantic-version Git tag on the exact triggering commit (for example `v1.2.3`).
-- `release-name`, `release-notes`: optional GitHub Release metadata.
-- `hemtt-version`: HEMTT version to install (default `v1.21.0`).
-- `project-root`, `config-path`: project and optional framework configuration paths.
-- `publish-github`: create and publish a GitHub Release (default `true`).
-- `publish-steam`: update an existing Workshop item (default `false`).
-- `workshop-id`, `publisher-path`, `steam-change-note`: required when Steam publishing is enabled.
-- `prerelease`: mark the GitHub Release as a prerelease.
+- `release-tag`: existing GitHub Release tag; semantic version required.
+- `project-root`: project root relative to the caller workspace (default `.`).
+- `hemtt-version`: HEMTT version (default `v1.21.0`).
+- `version-header-path`: project-relative version header (default `addons/main/script_version.hpp`). The file must contain exactly one MAJOR, MINOR, and PATCH define.
+- `meta-file-path`: generated Workshop `meta.cpp` path (default `meta.cpp`).
+- `workshop-id`, `workshop-name`, `release-folder`: variant-specific Workshop metadata and output folder prefix.
+- `publish-github`, `publish-steam`: enable each destination (both default to `true`).
+- `prerelease`: GitHub prerelease flag.
+- `finalize-github`: publish the GitHub Release after uploads succeed (default `true`). Set it to `false` on earlier calls when multiple variants attach assets to one release.
 
-The build job runs HEMTT `release` once, requires a root-level `addons` directory containing PBO files, and prepares a ZIP, SHA-256 checksum, and release manifest. It copies the exact HEMTT release folder into a stable `release-payload/workshop-content` directory, then uploads that folder, the ZIP, checksum, and manifest as one Actions artifact. This also makes the artifact name stable across GitHub Actions rerun attempts.
+The workflow derives the numeric version components from the tag, updates the version header, generates Workshop metadata, runs `hemtt release --no-archive`, verifies that the output contains at least one PBO, moves the release directory to the configured variant folder, and creates a ZIP. It attaches the ZIP to the existing GitHub Release and uploads the corresponding directory with `arma-actions/workshop-upload@v1`. The GitHub Release is finalized only after the Steam upload step succeeds.
 
-The GitHub Release is first created as a draft. The Steam job downloads the same artifact, verifies the archive and every content file against SHA-256 hashes in the manifest, then invokes PublisherCmd with `update /id /changeNoteFile /path`. Only after all enabled destinations succeed is the GitHub Release draft published. Steam-only and GitHub-only releases are supported.
+For multiple variants on one release event, call this reusable workflow in sequential jobs. Let the first job upload its variant with `finalize-github: false`; the last job uploads its variant with `finalize-github: true`. A prerelease that has only a Dev variant can finalize in its single call.
 
-**Recovery:** if one destination fails, the overall workflow fails and the GitHub Release remains a draft where applicable. Use GitHub Actions **Re-run failed jobs** on that same workflow run. Successful build/destination jobs remain complete, and the failed publishing job uses the retained artifact rather than rebuilding. Keep the run artifact until recovery is complete (14-day retention by default). GitHub Releases and Steam Workshop are not an atomic transaction.
-
-The Steam job runs on a self-hosted machine and executes PublisherCmd. Restrict access to that runner and do not allow untrusted pull-request workflows to target it. The job receives only the workflow's read-only `contents: read` permission and has no write access to the consuming repository.
+GitHub Releases and Steam Workshop are not an atomic transaction. If Steam upload fails, the workflow fails before finalizing the GitHub Release. Resolve the Steam issue and rerun the release workflow for the same tag. This workflow does not replace normal validation and test CI; ensure those checks pass before creating the GitHub Release.
 
 ## Current limitations
 
