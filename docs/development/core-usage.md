@@ -131,10 +131,43 @@ Supported inputs:
 
 The workflow requests only `contents: read`. It does not receive publishing secrets, create GitHub Releases, publish to Steam Workshop, or attempt to run Arma 3. The HEMTT setup action is pinned to a commit SHA. Artifact upload is required for Dev/Build/Release output (and fails if the expected primary output is absent); the additional project-level release directory is optional.
 
+
+## Reusable validation workflow
+
+The repository provides a callable Windows validation workflow at `.github/workflows/validate.yml`. A consuming project can call it from its own workflow:
+
+    name: Mod validation
+
+    on:
+      push:
+        branches: [main]
+      pull_request:
+
+    jobs:
+      validate:
+        uses: SkippieDippie/Arma3-Mod-Workflows/.github/workflows/validate.yml@YOUR_FRAMEWORK_REF
+        with:
+          framework-ref: YOUR_FRAMEWORK_REF
+
+Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The `uses` reference selects the reusable workflow; `framework-ref` separately selects the source revision checked out by that workflow. Do not use a moving branch for production consumers.
+
+Inputs:
+
+- `framework-ref`: required immutable framework tag or commit SHA.
+- `project-root`: consuming project directory relative to the caller workspace (default `.`).
+- `config-path`: optional framework configuration path relative to project root.
+- `modules`: comma- or newline-separated module IDs. Defaults to `Validation.Assets`, `Validation.Config`, `Validation.Dependencies`, `Validation.SQF`, and `Validation.Package`.
+- `fail-on-warning`: optionally fail when a selected module reports warnings (default `false`).
+- `fail-on-skipped`: fail when any selected module is skipped (default `true`). This prevents an empty manifest or missing optional validator from being treated as successful validation. Set to `false` only when skipping is intentional.
+
+The consuming project must configure the manifests required by its selected validators. For example, asset references, required config classes, SQF files, and PBO artifacts are all explicit; the framework does not assume a mod-specific directory layout. If a selected validator has no work configured, it reports `Skipped`, and the reusable workflow fails by default.
+
+The workflow requests only `contents: read`. It does not build, run Arma 3, publish releases, or require publishing secrets.
+
 ## Current limitations
 
 - YAML requires `powershell-yaml`; JSON does not.
-- The HEMTT reusable workflow is the first callable workflow; validation/testing workflow composition and release publication orchestration are not yet implemented.
+- The HEMTT and validation reusable workflows are available; testing workflow composition and release publication orchestration are not yet implemented.
 - HEMTT output is captured after process completion; live streaming log forwarding and configurable artifact-copying are future work.
 - The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
 
