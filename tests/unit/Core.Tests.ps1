@@ -54,4 +54,13 @@ Describe 'Arma3 Mod Workflows core' {
         ($results | Where-Object Module -eq 'Core.Broken').Status | Should -Be 'Failed'
         ($results | Where-Object Module -eq 'Feature.Dependent').Status | Should -Be 'Skipped'
     }
+
+    It 'merges project overrides over framework defaults' {
+        $defaults = @{ paths = @{ build_output = '.build'; release_output = 'release' }; modules = @{ build = @{ enabled = $true } } }
+        $project = @{ paths = @{ build_output = 'out' }; modules = @{ build = @{ enabled = $false } } }
+        $merged = Merge-A3WorkflowConfiguration -Base $defaults -Override $project
+        $merged.paths.build_output | Should -Be 'out'
+        $merged.paths.release_output | Should -Be 'release'
+        $merged.modules.build.enabled | Should -BeFalse
+    }
 }
