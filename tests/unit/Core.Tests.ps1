@@ -156,6 +156,24 @@ Describe 'Arma3 Mod Workflows core' {
         ($results | Where-Object Module -eq 'Feature.Dependent').Status | Should -Be 'Skipped'
     }
 
+    It 'initializes an integrated context with merged defaults' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            '{"schema_version":1}' | Set-Content -LiteralPath (Join-Path $projectRoot 'arma3-workflows.json') -Encoding UTF8
+            $context = Initialize-A3Workflow -ProjectRoot $projectRoot -FrameworkRoot $repositoryRoot
+            $context.ProjectRoot | Should -Be (Resolve-Path $projectRoot).Path
+            $context.Configuration.paths.build_output | Should -Be '.build'
+            $context.Registry | Should -Not -BeNullOrEmpty
+            $context.Logger | Should -Not -BeNullOrEmpty
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'provides a public command-line entry point' {
+        Test-Path -LiteralPath (Join-Path $repositoryRoot 'src/Invoke-Arma3ModWorkflows.ps1') | Should -BeTrue
+    }
+
     It 'merges project overrides over framework defaults' {
         $defaults = @{ paths = @{ build_output = '.build'; release_output = 'release' }; modules = @{ build = @{ enabled = $true } } }
         $project = @{ paths = @{ build_output = 'out' }; modules = @{ build = @{ enabled = $false } } }
