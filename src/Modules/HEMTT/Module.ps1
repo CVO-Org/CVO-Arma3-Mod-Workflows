@@ -101,7 +101,7 @@
                 $versionExitCode = $LASTEXITCODE
                 if ($null -eq $versionExitCode) { $versionExitCode = 0 }
                 $versionOutputText = $versionOutputLines -join [Environment]::NewLine
-                if ($versionOutputText -match '(?i)HEMTT\s+v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
+                if ($versionOutputText -match '(?i)(?:HEMTT\s+)?v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
                     $version = $Matches[1]
                 }
 
@@ -129,7 +129,7 @@
                 $exitCode = $LASTEXITCODE
                 if ($null -eq $exitCode) { $exitCode = 0 }
                 $outputText = $outputLines -join [Environment]::NewLine
-                if ($Operation -eq 'Detect' -and $outputText -match '(?i)HEMTT\s+v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
+                if ($Operation -eq 'Detect' -and $outputText -match '(?i)(?:HEMTT\s+)?v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
                     $version = $Matches[1]
                 }
                 if ($Operation -eq 'Detect' -and $toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.version) {
