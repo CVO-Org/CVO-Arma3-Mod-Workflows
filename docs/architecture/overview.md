@@ -69,7 +69,7 @@ The callable `.github/workflows/validate.yml` workflow checks out the consuming 
 
 ## Initial reusable SQF-VM test workflow
 
-The callable `.github/workflows/test.yml` workflow checks out the consuming project and a separately pinned framework revision, downloads a specified SQF-VM Windows release, and runs the explicit `Testing.SQFVM` manifest. The default release tag is pinned in the workflow input and can be overridden deliberately. The workflow fails on skipped test execution by default. It does not run Arma 3 or claim engine-level integration coverage.
+The callable `.github/workflows/test.yml` workflow checks out the consuming project and a separately pinned framework revision, downloads a specified SQF-VM Windows release, verifies its published SHA-256 digest, and runs the explicit `Testing.SQFVM` manifest. The default release tag is pinned in the workflow input and can be overridden deliberately. The workflow fails on skipped test execution by default. It does not run Arma 3 or claim engine-level integration coverage.
 
 ## Execution environments
 
