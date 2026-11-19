@@ -1403,7 +1403,7 @@ Describe 'Validation.Package module' {
         $packageDescriptor = & (Join-Path $repositoryRoot 'src/Modules/ValidationPackage/Module.ps1')
 
         function Write-TestPbo {
-            param([string]$Path, [string]$EntryName = 'config.cpp', [byte[]]$Payload = [Text.Encoding]::ASCII.GetBytes('abc'))
+            param([string]$Path, [string]$EntryName = 'config.cpp', [byte[]]$Payload = [Text.Encoding]::ASCII.GetBytes('abc'), [int]$TrailerLength = 0)
             $bytes = New-Object 'System.Collections.Generic.List[byte]'
             $bytes.AddRange([Text.Encoding]::ASCII.GetBytes($EntryName))
             $bytes.Add([byte]0)
@@ -1415,6 +1415,10 @@ Describe 'Validation.Package module' {
             $bytes.Add([byte]0)
             $bytes.AddRange([byte[]](0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
             $bytes.AddRange($Payload)
+            if ($TrailerLength -gt 0) {
+                $bytes.Add([byte]0)
+                for ($index = 1; $index -lt $TrailerLength; $index++) { $bytes.Add([byte]0) }
+            }
             [IO.File]::WriteAllBytes($Path, $bytes.ToArray())
         }
     }
@@ -1446,6 +1450,24 @@ Describe 'Validation.Package module' {
             $result.Errors.Id | Should -Contain 'PACKAGE_INVALID_PBO'
             $result.Errors.Id | Should -Contain 'PACKAGE_PATH_OUTSIDE_PROJECT'
             $result.Errors.Id | Should -Contain 'PACKAGE_INVALID_EXTENSION'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+
+
+    It 'accepts supported legacy checksum and Arma signature trailer lengths' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("PBO Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'release') -Force | Out-Null
+        try {
+            Write-TestPbo -Path (Join-Path $projectRoot 'release/legacy.pbo') -TrailerLength 5
+            Write-TestPbo -Path (Join-Path $projectRoot 'release/arma.pbo') -TrailerLength 21
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ package = @{ artifacts = @('release/legacy.pbo', 'release/arma.pbo') } } } }
+            $result = & $packageDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Passed'
+            $result.Data.Packages.Count | Should -Be 2
+            $result.Data.Packages[0].TrailingBytes | Should -Be 5
+            $result.Data.Packages[1].TrailingBytes | Should -Be 21
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
