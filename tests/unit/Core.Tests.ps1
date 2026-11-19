@@ -1403,8 +1403,20 @@ Describe 'Validation.Package module' {
         $packageDescriptor = & (Join-Path $repositoryRoot 'src/Modules/ValidationPackage/Module.ps1')
 
         function Write-TestPbo {
-            param([string]$Path, [string]$EntryName = 'config.cpp', [byte[]]$Payload = [Text.Encoding]::ASCII.GetBytes('abc'), [int]$TrailerLength = 0)
+            param([string]$Path, [string]$EntryName = 'config.cpp', [byte[]]$Payload = [Text.Encoding]::ASCII.GetBytes('abc'), [int]$TrailerLength = 0, [System.Collections.IDictionary]$Properties = $null)
             $bytes = New-Object 'System.Collections.Generic.List[byte]'
+            if ($Properties) {
+                $bytes.Add([byte]0)
+                $bytes.AddRange([Text.Encoding]::ASCII.GetBytes('Vers'))
+                $bytes.AddRange([byte[]](0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+                foreach ($key in $Properties.Keys) {
+                    $bytes.AddRange([Text.Encoding]::ASCII.GetBytes([string]$key))
+                    $bytes.Add([byte]0)
+                    $bytes.AddRange([Text.Encoding]::ASCII.GetBytes([string]$Properties[$key]))
+                    $bytes.Add([byte]0)
+                }
+                $bytes.Add([byte]0)
+            }
             $bytes.AddRange([Text.Encoding]::ASCII.GetBytes($EntryName))
             $bytes.Add([byte]0)
             $bytes.AddRange([byte[]](0,0,0,0))
@@ -1455,6 +1467,19 @@ Describe 'Validation.Package module' {
     }
 
 
+
+
+
+    It 'validates PBO properties headers used by addon packages' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("PBO Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'release') -Force | Out-Null
+        try {
+            Write-TestPbo -Path (Join-Path $projectRoot 'release/addon.pbo') -Properties @{ prefix = 'Example\Addon' }
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ package = @{ artifacts = @('release/addon.pbo') } } } }
+            (& $packageDescriptor.Invoke $context 'Validate').Status | Should -Be 'Passed'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 
     It 'accepts supported legacy checksum and Arma signature trailer lengths' {
         $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("PBO Validation " + [guid]::NewGuid().ToString('N'))
