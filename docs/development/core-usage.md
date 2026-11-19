@@ -40,6 +40,32 @@ Run the framework from PowerShell:
 
 Use `-ConfigPath` to select a non-default configuration file, `-EnableConsoleLog` to mirror log messages to the console, and `-FailOnWarning` to return exit code 1 when a module reports a warning. Exit codes are 0 for success, 1 for failed module results or configured warning failure, and 2 for initialization or command errors.
 
+## Asset validation module
+
+The first framework-owned validator is discovered as `Validation.Assets` when `modules.validation.enabled` is true. It supports the `Validate` operation and checks an explicit manifest of project-relative file paths. It does not scan SQF/config text automatically, and it does not replace HEMTT checks.
+
+Add local assets that must exist to `validation.assets.references`:
+
+    {
+      "schema_version": 1,
+      "validation": {
+        "assets": {
+          "enabled": true,
+          "severity": "error",
+          "references": [
+            "addons/example/models/example.p3d",
+            "addons/example/data/example_co.paa"
+          ]
+        }
+      }
+    }
+
+Absolute paths and references that resolve outside the project root are rejected. Each configured path must resolve to a file. Engine-provided paths (for example `\\a3\\...`) should not be listed. An empty list is reported as `Skipped`, not `Passed`. Set severity to `warning` to report missing references without failing validation.
+
+Run it with:
+
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Validate -Module Validation.Assets
+
 ## HEMTT build module
 
 The initial HEMTT module is discovered as `Build.HEMTT` when the framework's `build` module is enabled. It supports the operations `Detect`, `Check`, `Dev`, `Build`, `Release`, and the default `Run` operation (mapped to `hemtt build`).
