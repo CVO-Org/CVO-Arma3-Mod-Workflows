@@ -7,12 +7,13 @@ The project follows Semantic Versioning once the first stable release is publish
 ## Unreleased
 
 ### Added
-- Initial repository foundation and architecture documentation.
-- Initial version 1 project configuration JSON Schema and baseline defaults.
-- Importable PowerShell module for configuration loading, structured JSONL logging, module registration, dependency ordering, and normalized execution results.
-- Pester unit tests and a Windows GitHub Actions test workflow.
-- Core usage documentation.
-- Initial module execution contract and development standards.
+- Initial repository foundation, architecture documentation, configuration schema, and baseline defaults.
+- Importable PowerShell module and CLI for configuration loading, structured JSONL logging, module discovery, dependency ordering, and normalized execution results.
+- HEMTT build module with executable discovery, semantic-version detection and pinning, project configuration checks, check/dev/build/release commands, process timeouts, output capture, and artifact change tracking.
+- Pester unit and integration coverage for core behavior and HEMTT process execution, failure handling, and artifact reporting.
+- Windows CI coverage for PowerShell 7 and a dedicated Windows PowerShell 5.1 HEMTT compatibility smoke test.
+- Core and HEMTT usage documentation.
 
 ### Notes
-- Framework implementation and executable workflows are not yet available.
+- The HEMTT integration is the first implemented capability module. Validation, automated testing, and release orchestration modules remain future work.
+- HEMTT is an external dependency and is not downloaded or installed by the framework.
