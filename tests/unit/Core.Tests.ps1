@@ -384,6 +384,7 @@ Describe 'Arma3 Mod Workflows core' {
             $mockExecutable = Join-Path $projectRoot 'mock-hemtt.ps1'
             @'
 $global:LASTEXITCODE = 0
+Add-Content -LiteralPath (Join-Path $PSScriptRoot 'invocations.log') -Value ($args -join ' ')
 Write-Output 'HEMTT v1.2.3'
 Write-Output ("Mock received: " + ($args -join ' '))
 if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
@@ -413,11 +414,15 @@ if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
             $buildResult.Data.Version | Should -Be '1.2.3'
 
             $context.Configuration.tools.hemtt.version = '2.0.0'
+            $invocationLog = Join-Path $projectRoot 'invocations.log'
+            $invocationsBeforeMismatch = @(Get-Content -LiteralPath $invocationLog)
             $versionMismatch = & $descriptor.Invoke $context 'Build'
             $versionMismatch.Status | Should -Be 'Failed'
             $versionMismatch.Data.Version | Should -Be '1.2.3'
             $versionMismatch.Data.ExpectedVersion | Should -Be '2.0.0'
             $versionMismatch.Data.Output | Should -Match 'version mismatch'
+            $invocationsAfterMismatch = @(Get-Content -LiteralPath $invocationLog)
+            $invocationsAfterMismatch.Count | Should -Be $invocationsBeforeMismatch.Count
             $context.Configuration.tools.hemtt.version = '1.2.3'
             $buildResult.Data.Arguments | Should -Contain 'build'
             $buildResult.Data.Output | Should -Match 'Mock received: build'
