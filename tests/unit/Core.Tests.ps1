@@ -6,6 +6,7 @@ Describe 'Arma3 Mod Workflows core' {
         . (Join-Path $coreRoot 'Logging.ps1')
         . (Join-Path $coreRoot 'Configuration.ps1')
         . (Join-Path $coreRoot 'ModuleManager.ps1')
+        . (Join-Path $coreRoot 'Initialize.ps1')
     }
 
     It 'imports the public PowerShell module manifest' {
@@ -33,6 +34,11 @@ Describe 'Arma3 Mod Workflows core' {
         $defaultsPath = Join-Path $repositoryRoot 'config/defaults/configuration.json'
         $defaults = Read-A3WorkflowConfigurationFile -Path $defaultsPath
         (Test-A3WorkflowConfiguration -Configuration $defaults).IsValid | Should -BeTrue
+    }
+
+    It 'accepts project-defined module configuration keys' {
+        $config = @{ schema_version = 1; modules = @{ 'Custom.Analysis' = @{ enabled = $true; settings = @{ strict = $true } } } }
+        (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeTrue
     }
 
     It 'rejects unknown nested properties' {
