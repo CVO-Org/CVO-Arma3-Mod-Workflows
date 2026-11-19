@@ -283,6 +283,9 @@ function Invoke-A3WorkflowExternalProcess {
                 $outputText = ($standardOutput + [Environment]::NewLine + $standardError).Trim()
                 if ($Operation -eq 'Detect') {
                     $versionExitCode = $processResult.ExitCode
+                    $versionStandardOutput = $standardOutput
+                    $versionStandardError = $standardError
+                    $versionOutputText = $outputText
                 }
                 if ($Operation -eq 'Detect' -and $outputText -match '(?i)(?:HEMTT\s+)?v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
                     $version = $Matches[1]
