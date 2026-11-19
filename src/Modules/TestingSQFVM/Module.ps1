@@ -102,6 +102,11 @@
             else { $validatedConfigs += $resolved.Path }
         }
 
+        if ($errors.Count -gt 0) {
+            $watch.Stop()
+            return (New-A3WorkflowModuleResult -Module 'Testing.SQFVM' -Operation $Operation -Status Failed -Summary 'SQF-VM test configuration inputs are invalid; no test scripts were executed.' -Errors @($errors.ToArray()) -StartedAt $started -DurationMs ([Math]::Max(1, $watch.ElapsedMilliseconds)) -Data @{ Checks = @(); TestCount = 0; Processes = @(); Tool = @{ Name = 'SQF-VM'; Path = $toolPath }; ProjectRoot = $projectRoot; ExecutionMode = 'ExplicitTestScripts' })
+        }
+
         $processPath = $toolPath
         $processPrefix = @()
         if ([IO.Path]::GetExtension($toolPath) -ieq '.ps1') {
