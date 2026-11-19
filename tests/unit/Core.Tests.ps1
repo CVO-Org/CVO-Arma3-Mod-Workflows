@@ -352,6 +352,8 @@ Describe 'Arma3 Mod Workflows core' {
         }
         $result = & $descriptor.Invoke $context 'Detect'
         $result.Status | Should -Be 'Skipped'
+        $result.Warnings.Count | Should -Be 1
+        $result.Errors.Count | Should -Be 0
     }
 
     It 'fails when a required HEMTT executable is unavailable' {
