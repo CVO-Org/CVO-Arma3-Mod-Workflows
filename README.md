@@ -49,6 +49,10 @@ See [the architecture overview](docs/architecture/overview.md) and [configuratio
 
 ## Development status
 
-The PowerShell module is available under `src/Arma3ModWorkflows.psd1`; the CLI entry point is `src/Invoke-Arma3ModWorkflows.ps1`. It supports JSON configuration out of the box; YAML requires the optional `powershell-yaml` module. Runtime configuration validation is driven by `config/schema/arma3-workflows.schema.json`. Framework modules are discovered from `src/Modules` and enabled through the `modules` configuration section. Run core tests locally with `./tests/Invoke-Tests.ps1` from PowerShell 7, or use the Windows CI workflow. Build, validation, testing, and release capability modules are still under development.
+The PowerShell module is available under `src/Arma3ModWorkflows.psd1`; the CLI entry point is `src/Invoke-Arma3ModWorkflows.ps1`. It supports JSON configuration out of the box; YAML requires the optional `powershell-yaml` module. Runtime configuration validation is driven by `config/schema/arma3-workflows.schema.json`. Framework modules are discovered from `src/Modules` and enabled through the `modules` configuration section.
+
+The first capability module, `Build.HEMTT`, supports HEMTT detection, version pinning, project configuration checks, check/dev/build/release operations, process timeouts, and artifact reporting. HEMTT remains an external dependency. Core CI tests run under PowerShell 7, with a separate Windows PowerShell 5.1 compatibility smoke test for HEMTT.
+
+Validation, automated testing, reusable workflow orchestration, and release publication modules remain under development.
 
 See [core usage](docs/development/core-usage.md) and [CHANGELOG.md](CHANGELOG.md) for current capabilities and milestones. This repository does not provide project templates or require consuming projects to adopt a common directory structure.
