@@ -500,14 +500,14 @@ if ($args -contains '--fail') { exit 7 }
 
             $versionModePath = Join-Path $projectRoot 'version-mode.txt'
             $invocationLog = Join-Path $projectRoot 'invocations.log'
-            $buildInvocationsBeforeProbeFailures = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' })
+            $buildInvocationsBeforeProbeFailures = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' })
 
             'fail' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
             $versionProbeFailure = & $descriptor.Invoke $context 'Build'
             $versionProbeFailure.Status | Should -Be 'Failed'
             $versionProbeFailure.Data.VersionExitCode | Should -Be 9
             $versionProbeFailure.Data.Output | Should -Match 'version query failed'
-            @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' }).Count | Should -Be $buildInvocationsBeforeProbeFailures.Count
+            @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' }).Count | Should -Be $buildInvocationsBeforeProbeFailures.Count
 
             'unparseable' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
             $context.Configuration.tools.hemtt.version = $null
@@ -520,18 +520,18 @@ if ($args -contains '--fail') { exit 7 }
             $versionProbeUnparseable.Status | Should -Be 'Failed'
             $versionProbeUnparseable.Data.VersionMismatch | Should -BeTrue
             $versionProbeUnparseable.Data.Output | Should -Match 'Unable to determine HEMTT version'
-            @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' }).Count | Should -Be $buildInvocationsBeforeProbeFailures.Count
+            @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' }).Count | Should -Be $buildInvocationsBeforeProbeFailures.Count
 
             'normal' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
             $context.Configuration.tools.hemtt.version = '2.0.0'
             $invocationLog = Join-Path $projectRoot 'invocations.log'
-            $invocationsBeforeMismatch = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' })
+            $invocationsBeforeMismatch = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' })
             $versionMismatch = & $descriptor.Invoke $context 'Build'
             $versionMismatch.Status | Should -Be 'Failed'
             $versionMismatch.Data.Version | Should -Be '1.2.3'
             $versionMismatch.Data.ExpectedVersion | Should -Be '2.0.0'
             $versionMismatch.Data.Output | Should -Match 'version mismatch'
-            $invocationsAfterMismatch = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' })
+            $invocationsAfterMismatch = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' })
             $invocationsAfterMismatch.Count | Should -Be $invocationsBeforeMismatch.Count
             $context.Configuration.tools.hemtt.version = '1.2.3'
             $buildResult.Data.Arguments | Should -Contain 'build'
