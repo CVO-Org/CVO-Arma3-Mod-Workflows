@@ -12,7 +12,7 @@ function Invoke-A3WorkflowExternalProcess {
         $hostExecutable = Join-Path $PSHOME 'pwsh.exe'
         if (-not (Test-Path -LiteralPath $hostExecutable)) { $hostExecutable = Join-Path $PSHOME 'powershell.exe' }
         $processFile = $hostExecutable
-        $processArguments = @('-NoProfile', '-NonInteractive', '-File', $FilePath) + $processArguments
+        $processArguments = @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', $FilePath) + $processArguments
     }
 
     $quotedArguments = @()
