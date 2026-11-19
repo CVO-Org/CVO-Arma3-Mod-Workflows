@@ -104,7 +104,10 @@ Describe 'Arma3 Mod Workflows core' {
 @{
     Id = 'Build.Disabled'
     ConfigKey = 'build'
-    Invoke = { param($Context, $Operation) return @{ Executed = $true } }
+    Invoke = {
+        param($Context, $Operation)
+        throw 'A disabled module must not execute.'
+    }
 }
 '@ | Set-Content -LiteralPath (Join-Path $moduleDirectory 'Module.ps1') -Encoding UTF8
             $registry = New-A3WorkflowModuleRegistry
