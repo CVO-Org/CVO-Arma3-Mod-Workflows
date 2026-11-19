@@ -503,6 +503,10 @@ if ($args -contains '--fail') { exit 7 }
             $buildInvocationsBeforeProbeFailures = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' })
 
             'fail' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
+            $detectProcessFailure = & $descriptor.Invoke $context 'Detect'
+            $detectProcessFailure.Status | Should -Be 'Failed'
+            $detectProcessFailure.Data.VersionExitCode | Should -Be 9
+            $detectProcessFailure.Data.ExitCode | Should -Be 9
             $versionProbeFailure = & $descriptor.Invoke $context 'Build'
             $versionProbeFailure.Status | Should -Be 'Failed'
             $versionProbeFailure.Data.VersionExitCode | Should -Be 9
@@ -588,6 +592,13 @@ if ($args -contains '--fail') { exit 7 }
             $timeoutResult.Status | Should -Be 'Failed'
             $timeoutResult.Data.TimedOut | Should -BeTrue
             $timeoutResult.Data.ExitCode | Should -Be 124
+
+            'sleep' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
+            $detectTimeoutResult = & $descriptor.Invoke $context 'Detect'
+            $detectTimeoutResult.Status | Should -Be 'Failed'
+            $detectTimeoutResult.Data.TimedOut | Should -BeTrue
+            $detectTimeoutResult.Data.VersionExitCode | Should -Be 124
+            $detectTimeoutResult.Data.ExitCode | Should -Be 124
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
