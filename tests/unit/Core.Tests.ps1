@@ -545,13 +545,14 @@ if ($args -contains '--fail') { exit 7 }
                 ProjectRoot = $projectRoot
                 Configuration = @{
                     paths = @{ hemtt_config = '.hemtt/project.toml' }
-                    tools = @{ hemtt = @{ path = $mockExecutable; version = '1.2.3'; arguments = @('--mock-option', 'value with spaces') } }
+                    tools = @{ hemtt = @{ path = 'mock-hemtt.ps1'; version = '1.2.3'; arguments = @('--mock-option', 'value with spaces') } }
                 }
                 Logger = $null
             }
 
             $detectResult = & $descriptor.Invoke $context 'Detect'
             $detectResult.Status | Should -Be 'Passed'
+            $detectResult.Data.Executable | Should -Be $mockExecutable
             $detectResult.Data.Version | Should -Be '1.2.3'
             $detectResult.Data.Arguments | Should -Contain '--version'
             $detectResult.Data.Arguments | Should -Contain '--mock-option'
