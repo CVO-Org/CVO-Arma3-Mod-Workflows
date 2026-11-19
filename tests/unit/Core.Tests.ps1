@@ -1,10 +1,17 @@
-$coreRoot = Join-Path (Split-Path -Parent $PSScriptRoot) 'src/Core'
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$coreRoot = Join-Path $repositoryRoot 'src/Core'
 
 Describe 'Arma3 Mod Workflows core' {
     BeforeAll {
         . (Join-Path $coreRoot 'Logging.ps1')
         . (Join-Path $coreRoot 'Configuration.ps1')
         . (Join-Path $coreRoot 'ModuleManager.ps1')
+    }
+
+    It 'imports the public PowerShell module manifest' {
+        $manifest = Join-Path $repositoryRoot 'src/Arma3ModWorkflows.psd1'
+        { Import-Module $manifest -Force -ErrorAction Stop } | Should -Not -Throw
+        Get-Command Initialize-A3Workflow -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
     }
 
     It 'accepts schema version 1 configuration' {
