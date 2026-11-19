@@ -236,6 +236,8 @@ Required setup:
 - Run the runner under the Windows account that owns the authenticated, online Steam client session. PublisherCmd communicates through the Steam client; do not put Steam passwords or Steam Guard codes in workflow YAML or repository secrets.
 - The Workshop item must already exist and be owned/managed by the authenticated Steam account. Supply its numeric ID and a non-empty change note. This workflow updates an existing item; it does not create a new Workshop item or edit its title, description, preview, tags, or visibility.
 - Ensure the account has accepted the Steamworks agreement and that the Workshop item is configured as an Arma 3 Mod.
+- Protect the release tag pattern (for example, `v*`) so only trusted maintainers can create or move release tags. The workflow requires a tag-push event and verifies that the tag resolves to the triggering commit.
+- Gate release-tag creation on the consuming repository's validation and testing CI. This release workflow performs release-tag, HEMTT build, and payload integrity checks; it does not rerun the complete validation and SQF-VM test workflows.
 
 Inputs:
 
