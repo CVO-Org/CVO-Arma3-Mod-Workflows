@@ -482,6 +482,9 @@ if ($args -contains '--fail') { exit 7 }
             $detectResult.Data.Arguments | Should -Contain 'value with spaces'
             $detectResult.Data.StandardOutput | Should -Match 'Mock received: --version'
             $detectResult.Data.StandardError | Should -Match 'Mock stderr'
+            $detectResult.Data.VersionStandardOutput | Should -Match '1.2.3'
+            $detectResult.Data.VersionStandardError | Should -Match 'Mock stderr'
+            $detectResult.Data.VersionOutput | Should -Match '1.2.3'
             $detectResult.Data.Output | Should -Match 'Mock received: --version'
 
             $context.Configuration.tools.hemtt.version = '2.0.0'
