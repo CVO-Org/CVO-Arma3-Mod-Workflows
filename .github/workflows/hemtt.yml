@@ -112,6 +112,7 @@ jobs:
         with:
           name: hemtt-release-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/release/**' }}
+          if-no-files-found: error
 
       - name: Upload project release directory
         if: ${{ inputs.operation == 'Release' && inputs.artifact-path == '' }}
