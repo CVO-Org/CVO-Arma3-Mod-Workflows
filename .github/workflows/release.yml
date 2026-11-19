@@ -132,6 +132,21 @@ jobs:
           token: ${{ secrets.framework-token }}
           persist-credentials: false
 
+      - name: Verify release tag points to this commit
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs['release-tag'] }}
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          $tagCommit = & git rev-parse --verify "refs/tags/$($env:RELEASE_TAG)^{commit}" 2>$null
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($tagCommit | Out-String))) {
+            throw "Release tag '$env:RELEASE_TAG' does not exist in the consuming repository."
+          }
+          $tagCommit = ($tagCommit | Out-String).Trim()
+          if ($tagCommit -ne $env:EXPECTED_COMMIT) {
+            throw "Release tag '$env:RELEASE_TAG' resolves to $tagCommit, but this workflow run is for $env:EXPECTED_COMMIT."
+          }
+
       - name: Set up HEMTT
         uses: arma-actions/hemtt@a0570ddd80d2b7be9c0f052494c0f700b42668dd
         with:
@@ -419,6 +434,7 @@ jobs:
           if ($env:GITHUB_DRAFT -eq 'failure' -and $env:STEAM -eq 'success') {
             $lines += 'Steam Workshop publishing succeeded but GitHub Release draft creation failed. Rerun the failed GitHub draft job and its dependent publication job; the successful Steam upload does not need to be repeated.'
           }
+          $lines | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
           if ($env:PREFLIGHT -ne 'success' -or $env:BUILD -ne 'success') {
             throw 'Release preflight or build failed. No destination can be considered published.'
           }
@@ -426,9 +442,6 @@ jobs:
             throw 'GitHub Release publication did not complete successfully.'
           }
           if ($env:PUBLISH_STEAM -eq 'true' -and $env:STEAM -ne 'success') {
-            $lines += 'Steam Workshop publication did not complete successfully.'
-            $lines | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
             throw 'Steam Workshop publication did not complete successfully.'
           }
-          $lines | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
           $lines | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
