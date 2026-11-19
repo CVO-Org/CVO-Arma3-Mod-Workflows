@@ -15,7 +15,8 @@ try {
     $manifestPath = Join-Path $PSScriptRoot 'Arma3ModWorkflows.psd1'
     Import-Module $manifestPath -Force -ErrorAction Stop
 
-    $context = Initialize-A3Workflow -ProjectRoot $ProjectRoot -ConfigPath $ConfigPath -FrameworkRoot $PSScriptRoot -EnableConsoleLog:$EnableConsoleLog
+    $frameworkRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+    $context = Initialize-A3Workflow -ProjectRoot $ProjectRoot -ConfigPath $ConfigPath -FrameworkRoot $frameworkRoot -EnableConsoleLog:$EnableConsoleLog
 
     if ($ListModules) {
         foreach ($item in ($context.Registry.Modules.Values | Sort-Object Id)) {
