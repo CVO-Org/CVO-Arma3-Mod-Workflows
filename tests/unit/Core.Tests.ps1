@@ -447,6 +447,48 @@ Describe 'Arma3 Mod Workflows core' {
         $result.DurationMs | Should -BeGreaterThan 0
     }
 
+
+    It 'resolves a relative configured HEMTT executable path against the project root' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("HEMTT Relative Path " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ paths = @{}; tools = @{ hemtt = @{ path = 'tools/missing-hemtt.exe'; required = $false } } }
+                Logger = $null
+            }
+            $result = & $descriptor.Invoke $context 'Detect'
+            $result.Status | Should -Be 'Skipped'
+            $result.Summary | Should -Match ([regex]::Escape((Join-Path $projectRoot 'tools/missing-hemtt.exe')))
+            $result.Warnings[0].Path | Should -Be (Join-Path $projectRoot 'tools/missing-hemtt.exe')
+        }
+        finally {
+            Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'resolves a configured HEMTT directory to hemtt.exe' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("HEMTT Directory Path " + [guid]::NewGuid().ToString('N'))
+        $toolDirectory = Join-Path $projectRoot 'tools'
+        New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
+        try {
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ paths = @{}; tools = @{ hemtt = @{ path = 'tools'; required = $false } } }
+                Logger = $null
+            }
+            $result = & $descriptor.Invoke $context 'Detect'
+            $result.Status | Should -Be 'Skipped'
+            $result.Summary | Should -Match ([regex]::Escape((Join-Path $toolDirectory 'hemtt.exe')))
+            $result.Warnings[0].Path | Should -Be (Join-Path $toolDirectory 'hemtt.exe')
+        }
+        finally {
+            Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'invokes a mock HEMTT executable and captures version, output, and artifacts' {
         $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
         $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("HEMTT Mock Project " + [guid]::NewGuid().ToString('N'))
