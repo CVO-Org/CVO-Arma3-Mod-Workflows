@@ -54,6 +54,11 @@ on:
         required: false
         type: boolean
         default: false
+      finalize-github:
+        description: Publish the GitHub Release after all configured uploads succeed
+        required: false
+        type: boolean
+        default: true
     secrets:
       steam_username:
         description: Steam account username for Workshop upload
