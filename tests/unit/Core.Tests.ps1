@@ -394,7 +394,7 @@ Describe 'Arma3 Mod Workflows core' {
 
     It 'invokes a mock HEMTT executable and captures version, output, and artifacts' {
         $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
-        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("HEMTT Mock Project " + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
         try {
             $hemttDirectory = Join-Path $projectRoot '.hemtt'
@@ -430,7 +430,7 @@ if ($args -contains '--fail') { exit 7 }
                 ProjectRoot = $projectRoot
                 Configuration = @{
                     paths = @{ hemtt_config = '.hemtt/project.toml' }
-                    tools = @{ hemtt = @{ path = $mockExecutable; version = '1.2.3' } }
+                    tools = @{ hemtt = @{ path = $mockExecutable; version = '1.2.3'; arguments = @('--mock-option', 'value with spaces') } }
                 }
                 Logger = $null
             }
@@ -439,6 +439,8 @@ if ($args -contains '--fail') { exit 7 }
             $detectResult.Status | Should -Be 'Passed'
             $detectResult.Data.Version | Should -Be '1.2.3'
             $detectResult.Data.Arguments | Should -Contain '--version'
+            $detectResult.Data.StandardOutput | Should -Match 'Mock received: --version'
+            $detectResult.Data.StandardError | Should -Match 'Mock stderr'
             $detectResult.Data.Output | Should -Match 'Mock received: --version'
 
             $context.Configuration.tools.hemtt.version = '2.0.0'
@@ -454,6 +456,8 @@ if ($args -contains '--fail') { exit 7 }
             $buildResult = & $descriptor.Invoke $context 'Build'
             $buildResult.Status | Should -Be 'Passed'
             $buildResult.Data.Version | Should -Be '1.2.3'
+            $buildResult.Data.StandardOutput | Should -Match 'value with spaces'
+            $buildResult.Data.StandardError | Should -Match 'Mock stderr'
 
             $context.Configuration.tools.hemtt.version = '2.0.0'
             $invocationLog = Join-Path $projectRoot 'invocations.log'
