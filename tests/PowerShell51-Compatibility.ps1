@@ -4,10 +4,12 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("A3Workflow-PS51-" + [guid]::NewGuid().ToString('N'))
 $toolDirectory = Join-Path $projectRoot 'tools'
 $hemttDirectory = Join-Path $projectRoot '.hemtt'
+$sqfDirectory = Join-Path $projectRoot 'addons/example'
 
 try {
     New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
     New-Item -ItemType Directory -Path $hemttDirectory -Force | Out-Null
+    New-Item -ItemType Directory -Path $sqfDirectory -Force | Out-Null
 
     @'
 if ($args -contains '--version') {
@@ -22,6 +24,14 @@ exit 0
 '@ | Set-Content -LiteralPath (Join-Path $toolDirectory 'hemtt.ps1') -Encoding UTF8
 
     'name = "PS51Compatibility"' | Set-Content -LiteralPath (Join-Path $hemttDirectory 'project.toml') -Encoding UTF8
+    'systemChat "PS51 SQF-VM smoke test";' | Set-Content -LiteralPath (Join-Path $sqfDirectory 'init.sqf') -Encoding UTF8
+    @'
+if ($args -contains '--parse-only' -and $args -contains '--input-sqf' -and $args -contains '--automated') {
+    Write-Output 'Mock SQF-VM parse passed.'
+    exit 0
+}
+exit 9
+'@ | Set-Content -LiteralPath (Join-Path $toolDirectory 'sqfvm.ps1') -Encoding UTF8
     @{
         schema_version = 1
         tools = @{
@@ -30,7 +40,13 @@ exit 0
                 version = '1.2.3'
                 required = $true
             }
+            sqfvm = @{
+                path = 'tools/sqfvm.ps1'
+                required = $true
+                timeout_seconds = 10
+            }
         }
+        validation = @{ sqf = @{ files = @('addons/example/init.sqf') } }
     } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $projectRoot 'arma3-workflows.json') -Encoding UTF8
 
     Import-Module (Join-Path $repositoryRoot 'src/Arma3ModWorkflows.psd1') -Force
@@ -42,6 +58,12 @@ exit 0
             $details = if ($results.Count -gt 0) { $results[0] | ConvertTo-Json -Depth 10 } else { 'No module result returned.' }
             throw "PowerShell 5.1 compatibility check failed for $operation. $details"
         }
+    }
+
+    $sqfResults = @(Invoke-A3WorkflowModules -Registry $context.Registry -Context $context -Operation Validate -ModuleIds @('Validation.SQF'))
+    if ($sqfResults.Count -ne 1 -or $sqfResults[0].Status -ne 'Passed') {
+        $details = if ($sqfResults.Count -gt 0) { $sqfResults[0] | ConvertTo-Json -Depth 10 } else { 'No module result returned.' }
+        throw "PowerShell 5.1 SQF-VM compatibility check failed. $details"
     }
 
     Write-Output 'Windows PowerShell 5.1 compatibility check passed.'
