@@ -70,6 +70,14 @@
             return (New-A3WorkflowModuleResult -Module 'Validation.SQF' -Operation $Operation -Status Failed -Summary 'SQF-VM timeout must be greater than zero.' -Errors @(@{ Id = 'SQFVM_INVALID_TIMEOUT'; Message = 'tools.sqfvm.timeout_seconds must be a positive integer.'; Tool = 'SQF-VM' }) -StartedAt $started -DurationMs ([Math]::Max(1, $watch.ElapsedMilliseconds)))
         }
 
+        $processPath = $toolPath
+        $processPrefix = @()
+        if ([IO.Path]::GetExtension($toolPath) -ieq '.ps1') {
+            $hostExecutable = Join-Path $PSHOME 'pwsh.exe'
+            if (-not (Test-Path -LiteralPath $hostExecutable)) { $hostExecutable = Join-Path $PSHOME 'powershell.exe' }
+            $processPath = $hostExecutable
+            $processPrefix = @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', $toolPath)
+        }
         $extraArguments = @()
         if ($tool -is [System.Collections.IDictionary] -and $tool.Contains('arguments')) { $extraArguments = @($tool.arguments) }
         $findings = New-Object System.Collections.Generic.List[object]
@@ -120,11 +128,11 @@
                 continue
             }
 
-            $arguments = @('--automated', '--suppress-welcome', '--no-execute-print', '--parse-only', '--input-sqf', $candidate) + $extraArguments
+            $arguments = $processPrefix + @('--automated', '--suppress-welcome', '--no-execute-print', '--parse-only', '--input-sqf', $candidate) + $extraArguments
             $quoted = @()
             foreach ($argument in $arguments) { $quoted += (& $quoteArgument ([string]$argument)) }
             $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $startInfo.FileName = $toolPath
+            $startInfo.FileName = $processPath
             $startInfo.Arguments = $quoted -join ' '
             $startInfo.WorkingDirectory = $projectRoot
             $startInfo.UseShellExecute = $false
