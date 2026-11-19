@@ -100,7 +100,7 @@ HEMTT output, separate standard output and standard error, process exit code, ex
 
 ## Reusable HEMTT workflow
 
-The repository provides a callable Windows workflow at `.github/workflows/hemtt.yml`. A consuming repository can call it from its own workflow:
+The repository provides a callable Windows workflow at `.github/workflows/hemtt.yml`. A consuming repository can call it from its own workflow. Because this framework repository is private, the caller must pass a fine-grained personal access token with **Contents: read** access to this repository. Store it in the consuming repository as `FRAMEWORK_READ_TOKEN`:
 
     name: Mod CI
 
@@ -116,6 +116,8 @@ The repository provides a callable Windows workflow at `.github/workflows/hemtt.
           framework-ref: YOUR_FRAMEWORK_REF
           operation: Check
           hemtt-version: v1.21.0
+        secrets:
+          framework-token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
 
 Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The `uses` reference selects the reusable workflow; `framework-ref` separately tells the workflow which revision of the framework source to check out. Do not use a moving branch for production consumers.
 
@@ -148,6 +150,8 @@ The repository provides a callable Windows validation workflow at `.github/workf
         uses: SkippieDippie/Arma3-Mod-Workflows/.github/workflows/validate.yml@YOUR_FRAMEWORK_REF
         with:
           framework-ref: YOUR_FRAMEWORK_REF
+        secrets:
+          framework-token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
 
 Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The `uses` reference selects the reusable workflow; `framework-ref` separately selects the source revision checked out by that workflow. Do not use a moving branch for production consumers.
 
@@ -182,6 +186,8 @@ The repository provides a callable Windows runtime-test workflow at `.github/wor
         with:
           framework-ref: YOUR_FRAMEWORK_REF
           sqfvm-version: v2026.04.03-ed9f5f5
+        secrets:
+          framework-token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
 
 Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The workflow separately installs the selected SQF-VM release from its official GitHub release archive and verifies the archive against the SHA-256 digest published by the GitHub Releases API.
 
@@ -197,10 +203,64 @@ The consuming project must configure `testing.sqfvm.files` with explicit project
 
 Each configured test script runs in its own SQF-VM process. This is SQF-VM runtime testing, not an Arma 3 engine test; engine commands and game integration still require in-game validation.
 
+
+## Reusable release workflow
+
+The callable `.github/workflows/release.yml` workflow builds a release once and distributes the same HEMTT output to the enabled destinations. The release tag must already exist in the consuming repository and point to the exact commit that triggered the workflow.
+
+Example caller workflow (replace the framework SHA and Workshop ID):
+
+    name: Release
+    on:
+      push:
+        tags: ['v*']
+
+    jobs:
+      release:
+        uses: SkippieDippie/Arma3-Mod-Workflows/.github/workflows/release.yml@YOUR_FRAMEWORK_REF
+        with:
+          framework-ref: YOUR_FRAMEWORK_REF
+          release-tag: ${{ github.ref_name }}
+          publish-github: true
+          publish-steam: true
+          workshop-id: '1234567890'
+          publisher-path: 'C:\Program Files (x86)\Steam\steamapps\common\Arma 3 Tools\Publisher\PublisherCmd.exe'
+          steam-change-note: 'See the GitHub release notes for details.'
+        secrets:
+          framework-token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
+
+Required setup:
+
+- Create a fine-grained personal access token with **Contents: read** access to the private framework repository. Store it in the consuming repository as `FRAMEWORK_READ_TOKEN` and pass it as `secrets.framework-token` to each reusable workflow. The token is used only to check out the private framework source; checkout credentials are not persisted.
+- For Steam publishing, use a dedicated Windows self-hosted runner labelled `self-hosted`, `Windows`, `X64`, and `arma3-publisher`. Install Arma 3 Tools and set `publisher-path` to its `PublisherCmd.exe`.
+- Run the runner under the Windows account that owns the authenticated, online Steam client session. PublisherCmd communicates through the Steam client; do not put Steam passwords or Steam Guard codes in workflow YAML or repository secrets.
+- The Workshop item must already exist and be owned/managed by the authenticated Steam account. Supply its numeric ID and a non-empty change note. This workflow updates an existing item; it does not create a new Workshop item or edit its title, description, preview, tags, or visibility.
+- Ensure the account has accepted the Steamworks agreement and that the Workshop item is configured as an Arma 3 Mod.
+
+Inputs:
+
+- `framework-ref`: immutable tag or commit SHA matching the reusable workflow ref.
+- `release-tag`: existing semantic-version Git tag on the exact triggering commit (for example `v1.2.3`).
+- `release-name`, `release-notes`: optional GitHub Release metadata.
+- `hemtt-version`: HEMTT version to install (default `v1.21.0`).
+- `project-root`, `config-path`: project and optional framework configuration paths.
+- `publish-github`: create and publish a GitHub Release (default `true`).
+- `publish-steam`: update an existing Workshop item (default `false`).
+- `workshop-id`, `publisher-path`, `steam-change-note`: required when Steam publishing is enabled.
+- `prerelease`: mark the GitHub Release as a prerelease.
+
+The build job runs HEMTT `release` once, requires a root-level `addons` directory containing PBO files, and prepares a ZIP, SHA-256 checksum, and release manifest. It uploads the exact HEMTT release folder and those metadata files as one Actions artifact. Hidden files are included explicitly because the HEMTT output directory begins with a dot.
+
+The GitHub Release is first created as a draft. The Steam job downloads the same artifact, verifies the archive and every content file against SHA-256 hashes in the manifest, then invokes PublisherCmd with `update /id /changeNoteFile /path`. Only after all enabled destinations succeed is the GitHub Release draft published. Steam-only and GitHub-only releases are supported.
+
+**Recovery:** if one destination fails, the overall workflow fails and the GitHub Release remains a draft where applicable. Use GitHub Actions **Re-run failed jobs** on that same workflow run. Successful build/destination jobs remain complete, and the failed publishing job uses the retained artifact rather than rebuilding. Keep the run artifact until recovery is complete (14-day retention by default). GitHub Releases and Steam Workshop are not an atomic transaction.
+
+The Steam job runs on a self-hosted machine and executes PublisherCmd. Restrict access to that runner and do not allow untrusted pull-request workflows to target it. The job has no GitHub repository-token permissions.
+
 ## Current limitations
 
 - YAML requires `powershell-yaml`; JSON does not.
-- The HEMTT and validation reusable workflows are available; testing workflow composition and release publication orchestration are not yet implemented.
+- Reusable HEMTT, validation, SQF-VM testing, and coordinated release workflows are available. Steam publishing requires a configured self-hosted Windows runner.
 - HEMTT output is captured after process completion; live streaming log forwarding and configurable artifact-copying are future work.
 - The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
 
