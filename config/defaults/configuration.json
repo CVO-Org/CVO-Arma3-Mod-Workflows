@@ -27,7 +27,7 @@
     "sqf": {"enabled": true, "severity": "error"},
     "config": {"enabled": true, "severity": "error", "required_classes": []},
     "assets": {"enabled": true, "severity": "error", "references": []},
-    "dependencies": {"enabled": true, "severity": "warning"},
+    "dependencies": {"enabled": true, "severity": "warning", "config_files": [], "internal_addons": []},
     "package": {"enabled": true, "severity": "error"}
   },
   "testing": {"automated": {"enabled": true}, "in_game": {"enabled": true}},
