@@ -273,11 +273,12 @@ function Invoke-A3WorkflowExternalProcess {
                     $version = $Matches[1]
                 }
 
-                if (-not $timedOut -and $versionExitCode -ne 0) {
+                if (-not $timedOut -and $versionExitCode -ne 0 -and -not $version) {
                     $exitCode = $versionExitCode
                     $outputText = 'HEMTT version query failed.' + [Environment]::NewLine + $versionOutputText
                 }
-                elseif (-not $timedOut -and $toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.version) {
+
+                if (-not $timedOut -and $toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.version) {
                     $expectedVersion = ([string]$toolConfiguration.version).TrimStart('v')
                     if (-not $version) {
                         $exitCode = 1
@@ -292,7 +293,7 @@ function Invoke-A3WorkflowExternalProcess {
                 }
             }
 
-            if ($Operation -eq 'Detect' -or ($versionExitCode -eq 0 -and -not $versionMismatch -and -not $timedOut)) {
+            if ($Operation -eq 'Detect' -or (($versionExitCode -eq 0 -or $version) -and -not $versionMismatch -and -not $timedOut)) {
                 if ($Operation -eq 'Detect') { $versionProbeInProgress = $true }
                 $processResult = Invoke-A3WorkflowExternalProcess -FilePath $executable -Arguments $commandArguments -TimeoutSeconds $timeoutSeconds -WorkingDirectory $projectRoot
                 if ($Operation -eq 'Detect') { $versionProbeInProgress = $false }
