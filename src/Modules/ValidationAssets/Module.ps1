@@ -55,7 +55,7 @@
                 if (-not $candidate.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase) -and $candidate -ne $projectRoot) {
                     $finding = @{ Id = 'ASSET_PATH_OUTSIDE_PROJECT'; Severity = $severity; Message = 'Asset reference resolves outside the project root.'; Path = $relativePath; Tool = 'Arma3-Mod-Workflows' }
                 }
-                elseif (-not (Test-Path -LiteralPath $candidate)) {
+                elseif (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
                     $finding = @{ Id = 'ASSET_NOT_FOUND'; Severity = $severity; Message = 'Referenced asset does not exist.'; Path = $relativePath; Tool = 'Arma3-Mod-Workflows' }
                 }
             }
