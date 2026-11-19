@@ -146,8 +146,12 @@
                             $dataEnd = [UInt64]$dataStart + $dataBytes
                             if ($dataEnd -gt [UInt64]$stream.Length) { throw 'PBO file data extends beyond the end of the artifact.' }
                             $trailingBytes = [UInt64]$stream.Length - $dataEnd
-                            if ($trailingBytes -notin @([UInt64]0, [UInt64]20)) {
-                                throw "PBO has an unexpected $trailingBytes trailing byte(s) after its data section; only an optional 20-byte SHA-1 checksum is accepted."
+                            if ($trailingBytes -notin @([UInt64]0, [UInt64]5, [UInt64]21)) {
+                                throw "PBO has an unexpected $trailingBytes trailing byte(s) after its data section; supported trailers are absent, 5-byte legacy checksums, or 21-byte Arma signature records."
+                            }
+                            if ($trailingBytes -gt 0) {
+                                $stream.Position = [long]$dataEnd
+                                if ($reader.ReadByte() -ne 0) { throw 'PBO checksum/signature trailer must begin with a zero byte.' }
                             }
                             if ($entryCount -eq 0) { throw 'PBO contains no file entries.' }
                             $packageInfo = [pscustomobject]@{ Path = $relativePath; EntryCount = $entryCount; Entries = @($entryNames.ToArray()); DataBytes = $dataBytes; TrailingBytes = $trailingBytes; Status = 'Passed' }
