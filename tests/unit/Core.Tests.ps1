@@ -515,6 +515,34 @@ exit 0
         }
     }
 
+    It 'discovers and executes HEMTT from PATH' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("HEMTT PATH Discovery " + [guid]::NewGuid().ToString('N'))
+        $toolDirectory = Join-Path $projectRoot 'tools'
+        New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
+        $originalPath = $env:PATH
+        try {
+            @'
+if ($args -contains '--version') { Write-Output 'HEMTT v1.2.3'; exit 0 }
+exit 0
+'@ | Set-Content -LiteralPath (Join-Path $toolDirectory 'hemtt.ps1') -Encoding UTF8
+            $env:PATH = $toolDirectory + [IO.Path]::PathSeparator + $originalPath
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ paths = @{}; tools = @{ hemtt = @{ version = '1.2.3' } } }
+                Logger = $null
+            }
+            $result = & $descriptor.Invoke $context 'Detect'
+            $result.Status | Should -Be 'Passed'
+            $result.Data.Executable | Should -Be (Join-Path $toolDirectory 'hemtt.ps1')
+            $result.Data.Version | Should -Be '1.2.3'
+        }
+        finally {
+            $env:PATH = $originalPath
+            Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'invokes a mock HEMTT executable and captures version, output, and artifacts' {
         $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
         $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("HEMTT Mock Project " + [guid]::NewGuid().ToString('N'))
