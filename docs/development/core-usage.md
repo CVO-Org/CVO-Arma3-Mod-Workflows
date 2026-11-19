@@ -8,7 +8,7 @@ The default configuration filename is arma3-workflows.yml. YAML parsing requires
 
     Install-Module powershell-yaml -Scope CurrentUser
 
-JSON is also supported without an additional parser. Use arma3-workflows.json or pass an explicit path with ConfigPath.
+JSON is also supported without an additional parser. Use arma3-workflows.json or pass an explicit path with ConfigPath. Framework defaults from config/defaults/configuration.json are recursively merged with project values; project settings take precedence.
 
 The initial runtime checks schema_version, known top-level properties, and core value types. The JSON Schema remains the canonical machine-readable contract; full JSON Schema evaluation will be added to CI.
 
