@@ -72,3 +72,15 @@ Modules must:
 ## Dependency behavior
 
 The module manager resolves dependencies before execution. A missing optional dependency results in a clear skip or warning. A missing required dependency fails preflight before module execution. Circular dependencies are configuration errors.
+
+## Module discovery
+
+Framework capability modules are discovered from immediate child directories of `src/Modules`. Each module directory contains a `Module.ps1` descriptor that returns a hashtable with:
+
+- `Id`: stable dotted module identifier;
+- `ConfigKey`: key under the project's `modules` configuration object;
+- `Invoke`: module execution scriptblock.
+
+Optional descriptor fields are `Version`, `DependsOn`, and `Operations` (default `Run`). The descriptor is metadata/code supplied by the trusted framework repository; do not load untrusted module directories.
+
+A module is registered only when its matching `modules.<ConfigKey>.enabled` value is true. If that key is absent, the module defaults to enabled. A project may define additional module keys; they are validated using the same module-toggle schema. Disabled modules are reported in discovery metadata and are not registered. Explicit registration remains available for project-specific modules and tests.
