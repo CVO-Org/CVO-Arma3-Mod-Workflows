@@ -117,7 +117,7 @@ The repository provides a callable Windows workflow at `.github/workflows/hemtt.
           operation: Check
           hemtt-version: v1.21.0
         secrets:
-          framework-token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
+          framework_token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
 
 Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The `uses` reference selects the reusable workflow; `framework-ref` separately tells the workflow which revision of the framework source to check out. Do not use a moving branch for production consumers.
 
@@ -151,7 +151,7 @@ The repository provides a callable Windows validation workflow at `.github/workf
         with:
           framework-ref: YOUR_FRAMEWORK_REF
         secrets:
-          framework-token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
+          framework_token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
 
 Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The `uses` reference selects the reusable workflow; `framework-ref` separately selects the source revision checked out by that workflow. Do not use a moving branch for production consumers.
 
@@ -187,7 +187,7 @@ The repository provides a callable Windows runtime-test workflow at `.github/wor
           framework-ref: YOUR_FRAMEWORK_REF
           sqfvm-version: v2026.04.03-ed9f5f5
         secrets:
-          framework-token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
+          framework_token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
 
 Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The workflow separately installs the selected SQF-VM release from its official GitHub release archive and verifies the archive against the SHA-256 digest published by the GitHub Releases API.
 
@@ -227,11 +227,11 @@ Example caller workflow (replace the framework SHA and Workshop ID):
           publisher-path: 'C:\Program Files (x86)\Steam\steamapps\common\Arma 3 Tools\Publisher\PublisherCmd.exe'
           steam-change-note: 'See the GitHub release notes for details.'
         secrets:
-          framework-token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
+          framework_token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
 
 Required setup:
 
-- Create a fine-grained personal access token with **Contents: read** access to the private framework repository. Store it in the consuming repository as `FRAMEWORK_READ_TOKEN` and pass it as `secrets.framework-token` to each reusable workflow. The token is used only to check out the private framework source; checkout credentials are not persisted.
+- Create a fine-grained personal access token with **Contents: read** access to the private framework repository. Store it in the consuming repository as `FRAMEWORK_READ_TOKEN` and pass it as `secrets.framework_token` to each reusable workflow. The token is used only to check out the private framework source; checkout credentials are not persisted.
 - For Steam publishing, use a dedicated Windows self-hosted runner labelled `self-hosted`, `Windows`, `X64`, and `arma3-publisher`. Install Arma 3 Tools and set `publisher-path` to its `PublisherCmd.exe`.
 - Run the runner under the Windows account that owns the authenticated, online Steam client session. PublisherCmd communicates through the Steam client; do not put Steam passwords or Steam Guard codes in workflow YAML or repository secrets.
 - The Workshop item must already exist and be owned/managed by the authenticated Steam account. Supply its numeric ID and a non-empty change note. This workflow updates an existing item; it does not create a new Workshop item or edit its title, description, preview, tags, or visibility.
@@ -249,7 +249,7 @@ Inputs:
 - `workshop-id`, `publisher-path`, `steam-change-note`: required when Steam publishing is enabled.
 - `prerelease`: mark the GitHub Release as a prerelease.
 
-The build job runs HEMTT `release` once, requires a root-level `addons` directory containing PBO files, and prepares a ZIP, SHA-256 checksum, and release manifest. It uploads the exact HEMTT release folder and those metadata files as one Actions artifact. Hidden files are included explicitly because the HEMTT output directory begins with a dot.
+The build job runs HEMTT `release` once, requires a root-level `addons` directory containing PBO files, and prepares a ZIP, SHA-256 checksum, and release manifest. It copies the exact HEMTT release folder into a stable `release-payload/workshop-content` directory, then uploads that folder, the ZIP, checksum, and manifest as one Actions artifact. This also makes the artifact name stable across GitHub Actions rerun attempts.
 
 The GitHub Release is first created as a draft. The Steam job downloads the same artifact, verifies the archive and every content file against SHA-256 hashes in the manifest, then invokes PublisherCmd with `update /id /changeNoteFile /path`. Only after all enabled destinations succeed is the GitHub Release draft published. Steam-only and GitHub-only releases are supported.
 
