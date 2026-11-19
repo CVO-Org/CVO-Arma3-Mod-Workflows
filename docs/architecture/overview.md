@@ -67,6 +67,10 @@ The first callable workflow is `.github/workflows/hemtt.yml`. It runs on Windows
 
 The callable `.github/workflows/validate.yml` workflow checks out the consuming project and a separately pinned framework revision, then runs selected validation modules through the framework CLI on Windows. It accepts a project root, optional configuration path, module list, and warning/skip policies. Its default module list covers assets, config declarations, addon dependencies, SQF parsing, and PBO package structure. Skipped modules fail the workflow by default so an empty manifest or unavailable optional validator cannot silently appear as a successful validation run. The workflow does not build the mod, execute Arma 3, or publish artifacts.
 
+## Initial reusable SQF-VM test workflow
+
+The callable `.github/workflows/test.yml` workflow checks out the consuming project and a separately pinned framework revision, downloads a specified SQF-VM Windows release, and runs the explicit `Testing.SQFVM` manifest. The default release tag is pinned in the workflow input and can be overridden deliberately. The workflow fails on skipped test execution by default. It does not run Arma 3 or claim engine-level integration coverage.
+
 ## Execution environments
 
 - **Local:** Windows-first, PowerShell interface, with clear prerequisite checks.
