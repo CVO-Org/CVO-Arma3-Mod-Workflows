@@ -45,8 +45,6 @@ Describe 'Arma3 Mod Workflows core' {
         $result = Invoke-A3WorkflowModules -Registry $registry -Context $context
         $result[0].Status | Should -Be 'Passed'
     }
-}
-
     It 'skips dependent modules after a dependency fails' {
         $registry = New-A3WorkflowModuleRegistry
         Register-A3WorkflowModule -Registry $registry -Id 'Core.Broken' -Invoke { throw 'intentional failure' }
@@ -56,3 +54,4 @@ Describe 'Arma3 Mod Workflows core' {
         ($results | Where-Object Module -eq 'Core.Broken').Status | Should -Be 'Failed'
         ($results | Where-Object Module -eq 'Feature.Dependent').Status | Should -Be 'Skipped'
     }
+}
