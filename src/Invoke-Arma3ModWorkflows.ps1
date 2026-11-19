@@ -42,6 +42,6 @@ try {
     exit 0
 }
 catch {
-    Write-Error $_
+    [Console]::Error.WriteLine($_.ToString())
     exit 2
 }
