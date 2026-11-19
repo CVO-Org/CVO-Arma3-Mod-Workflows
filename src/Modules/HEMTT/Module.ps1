@@ -173,7 +173,7 @@ function Invoke-A3WorkflowExternalProcess {
         $processDurationMs = 0
         $standardOutput = ''
         $standardError = ''
-        if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.timeout_seconds) {
+        if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.Contains('timeout_seconds') -and $null -ne $toolConfiguration.timeout_seconds) {
             $timeoutSeconds = [int]$toolConfiguration.timeout_seconds
         }
         if ($timeoutSeconds -lt 1) {
