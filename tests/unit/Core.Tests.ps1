@@ -1466,11 +1466,7 @@ Describe 'Validation.Package module' {
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-
-
-
-
-    It 'validates PBO properties headers used by addon packages' {
+    It 'validates PBO properties headers/ used by addon packages' {
         $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("PBO Validation " + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path (Join-Path $projectRoot 'release') -Force | Out-Null
         try {
