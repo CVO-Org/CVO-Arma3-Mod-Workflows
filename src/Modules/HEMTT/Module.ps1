@@ -18,7 +18,28 @@ function Invoke-A3WorkflowExternalProcess {
     $quotedArguments = @()
     foreach ($argument in $processArguments) {
         $value = [string]$argument
-        $quotedArguments += '"' + $value.Replace('"', '\"') + '"'
+        $builder = New-Object System.Text.StringBuilder
+        [void]$builder.Append('"')
+        $slashes = 0
+        foreach ($character in $value.ToCharArray()) {
+            if ($character -eq [char]92) {
+                $slashes++
+            }
+            elseif ($character -eq [char]34) {
+                if ($slashes -gt 0) { [void]$builder.Append(('\' * ($slashes * 2))) }
+                [void]$builder.Append('\')
+                [void]$builder.Append('"')
+                $slashes = 0
+            }
+            else {
+                if ($slashes -gt 0) { [void]$builder.Append(('\' * $slashes)) }
+                [void]$builder.Append($character)
+                $slashes = 0
+            }
+        }
+        if ($slashes -gt 0) { [void]$builder.Append(('\' * ($slashes * 2))) }
+        [void]$builder.Append('"')
+        $quotedArguments += $builder.ToString()
     }
 
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
