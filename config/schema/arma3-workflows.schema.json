@@ -115,7 +115,27 @@
           "$ref": "#/$defs/checkToggle"
         },
         "assets": {
-          "$ref": "#/$defs/checkToggle"
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "severity": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning"
+              ]
+            },
+            "references": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
         },
         "dependencies": {
           "$ref": "#/$defs/checkToggle"
