@@ -1190,7 +1190,6 @@ exit 0
         New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
         'invalid' | Set-Content -LiteralPath (Join-Path $projectRoot 'invalid.sqf')
         $mockPath = Join-Path $projectRoot 'mock-sqfvm.ps1'
-        "@'\nWrite-Output 'Mock runtime failure.'\nexit 7\n'@ | Set-Content -LiteralPath '$mockPath'" | Out-Null
         @'
 Write-Output 'Mock SQF-VM failure.'
 [Console]::Error.WriteLine('Mock error')
