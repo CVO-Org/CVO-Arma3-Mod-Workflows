@@ -34,7 +34,7 @@ The initial implementation should be incremental. A category must not claim cove
 
 ## Initial SQF validation scope
 
-The first SQF source validator is `Validation.SQF`, an adapter for SQFLint. Projects explicitly list `.sqf` files in `validation.sqf.files`; the adapter invokes SQFLint once per file, requests JSON diagnostics and a meaningful process exit code, and normalizes error/warning records. It requires an explicitly configured executable or JAR path (or a `sqflint` executable on `PATH`). For a JAR, Java must be available on `PATH`. The upstream CLI does not document a version query, so the adapter reports the version as unknown and rejects a configured version pin rather than pretending it verified one. The tool is optional unless `tools.sqflint.required` is true. This check is limited to the analyzer's syntax/static diagnostics and does not execute SQF in Arma 3 or prove runtime correctness. It does not duplicate HEMTT's configured lint checks; projects should choose which diagnostics they want enabled to avoid redundant output.
+The first SQF source validator is `Validation.SQF`, an adapter for SQF-VM in automated parse-only mode. Projects explicitly list `.sqf` files in `validation.sqf.files`; the adapter invokes SQF-VM once per file without executing the scripts. SQF-VM is an external optional dependency, and its custom implementation supports a subset of Arma SQF commands. Parse success does not establish Arma 3 runtime compatibility. The adapter deliberately does not claim version pinning until a stable machine-readable version-query contract is verified.
 
 ## Initial addon dependency validation scope
 
@@ -49,6 +49,13 @@ The first config-specific check is implemented by `Validation.Config`. Projects 
 The first framework-owned validator is `Validation.Assets`. It checks the explicit list in `validation.assets.references` against files inside the consuming project root. References must be project-relative; absolute paths and paths that escape the project root are rejected. This avoids guessing which strings in SQF/config files are file references and avoids false positives for Arma engine paths such as `\\a3\\...`.
 
 The initial manifest is intentionally explicit rather than an automatic source scanner. Projects should add only local assets that are expected to exist in their repository. Engine-provided assets and runtime-generated files should not be listed. Empty manifests are reported as skipped, not passed, so a project cannot mistake an unconfigured check for coverage. The configured severity determines whether a missing reference is an error or warning. Config class expectations use the same severity policy for missing files and declarations.
+
+
+## Initial package validation scope
+
+The first package validator is `Validation.Package`. Projects explicitly list PBO artifacts in `validation.package.artifacts`, either as project-relative path strings or objects containing a `path` and optional `required_entries`. The validator checks path safety, existence, the `.pbo` extension, header termination, entry metadata, data-section bounds, and optional checksum trailer length. It can also verify that named entries such as `config.cpp` or `stringtable.xml` are present.
+
+This is structural inspection only: it does not extract PBO contents, decrypt encrypted packages, decompress individual entries, verify signatures or checksums cryptographically, or establish that the package will load correctly in Arma 3. The module never invokes HEMTT or modifies the artifact. An empty manifest is reported as skipped, not passed. The configured severity applies to artifact and required-entry findings.
 
 ## Normalized finding contract
 
