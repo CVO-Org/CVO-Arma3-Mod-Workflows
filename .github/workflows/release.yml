@@ -73,7 +73,7 @@ on:
         required: true
 
 permissions:
-  contents: write
+  contents: read
 
 
 concurrency:
@@ -207,6 +207,12 @@ jobs:
 
           $payloadRoot = Join-Path $env:GITHUB_WORKSPACE 'release-payload'
           New-Item -ItemType Directory -Path $payloadRoot -Force | Out-Null
+          $stagedContentPath = Join-Path $payloadRoot 'workshop-content'
+          New-Item -ItemType Directory -Path $stagedContentPath -Force | Out-Null
+          Get-ChildItem -LiteralPath $contentPath -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $stagedContentPath -Recurse -Force
+          }
+
           $safeTag = $env:RELEASE_TAG -replace '[^A-Za-z0-9._-]', '_'
           $archivePath = Join-Path $payloadRoot "arma3-mod-$safeTag.zip"
 
@@ -215,7 +221,7 @@ jobs:
             Remove-Item -LiteralPath $archivePath -Force
           }
           [System.IO.Compression.ZipFile]::CreateFromDirectory(
-            $contentPath,
+            $stagedContentPath,
             $archivePath,
             [System.IO.Compression.CompressionLevel]::Optimal,
             $false
@@ -225,9 +231,9 @@ jobs:
           Set-Content -LiteralPath "$archivePath.sha256" -Value "$hash  $(Split-Path -Leaf $archivePath)" -Encoding ascii
 
           $contentFiles = @(
-            Get-ChildItem -LiteralPath $contentPath -File -Recurse |
+            Get-ChildItem -LiteralPath $stagedContentPath -File -Recurse |
               ForEach-Object {
-                $relativePath = $_.FullName.Substring($contentPath.Length).TrimStart([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar).Replace('\', '/')
+                $relativePath = $_.FullName.Substring($stagedContentPath.Length).TrimStart([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar).Replace('\', '/')
                 [ordered]@{
                   path = $relativePath
                   length = [long]$_.Length
@@ -242,7 +248,7 @@ jobs:
           $manifest = [ordered]@{
             release_tag = $env:RELEASE_TAG
             source_commit = $env:RELEASE_COMMIT
-            workshop_content = '.hemttout/release'
+            workshop_content = 'workshop-content'
             archive = (Split-Path -Leaf $archivePath)
             sha256 = $hash
             pbo_count = $pbos.Count
@@ -256,24 +262,23 @@ jobs:
       - name: Upload release payload for both destinations
         uses: actions/upload-artifact@v4
         with:
-          name: arma3-release-payload-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            .hemttout/release/**
-            release-payload/**
+          name: arma3-release-payload-${{ github.run_id }}
+          path: release-payload/**
           if-no-files-found: error
           retention-days: 14
-          include-hidden-files: true
 
   github-draft:
     name: Create GitHub Release draft
     needs: build
     if: ${{ inputs['publish-github'] }}
+    permissions:
+      contents: write
     runs-on: windows-latest
     steps:
       - name: Download the prepared release payload
         uses: actions/download-artifact@v4
         with:
-          name: arma3-release-payload-${{ github.run_id }}-${{ github.run_attempt }}
+          name: arma3-release-payload-${{ github.run_id }}
           path: release-artifact
 
       - name: Create or update GitHub Release draft
@@ -301,7 +306,7 @@ jobs:
       - name: Download the exact release payload
         uses: actions/download-artifact@v4
         with:
-          name: arma3-release-payload-${{ github.run_id }}-${{ github.run_attempt }}
+          name: arma3-release-payload-${{ github.run_id }}
           path: release-artifact
 
       - name: Verify and publish the prepared release
@@ -328,7 +333,7 @@ jobs:
             throw 'Release archive SHA-256 verification failed.'
           }
 
-          $contentPath = Join-Path $env:GITHUB_WORKSPACE 'release-artifact/.hemttout/release'
+          $contentPath = Join-Path $env:GITHUB_WORKSPACE 'release-artifact/release-payload/workshop-content'
           $addonsPath = Join-Path $contentPath 'addons'
           if (-not (Test-Path -LiteralPath $addonsPath -PathType Container)) {
             throw "Workshop content does not contain an addons directory: $addonsPath"
@@ -383,6 +388,8 @@ jobs:
   github-publish:
     name: Publish GitHub Release
     needs: [build, github-draft, steam-publish]
+    permissions:
+      contents: write
     if: >-
       always() &&
       inputs['publish-github'] &&
@@ -434,7 +441,6 @@ jobs:
           if ($env:GITHUB_DRAFT -eq 'failure' -and $env:STEAM -eq 'success') {
             $lines += 'Steam Workshop publishing succeeded but GitHub Release draft creation failed. Rerun the failed GitHub draft job and its dependent publication job; the successful Steam upload does not need to be repeated.'
           }
-          $lines | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
           if ($env:PREFLIGHT -ne 'success' -or $env:BUILD -ne 'success') {
             throw 'Release preflight or build failed. No destination can be considered published.'
           }
