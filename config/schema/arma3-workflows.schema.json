@@ -109,7 +109,13 @@
       "additionalProperties": false,
       "properties": {
         "sqf": {
-          "$ref": "#/$defs/checkToggle"
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "severity": { "type": "string", "enum": ["error", "warning"] },
+            "files": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
         },
         "config": {
           "type": "object",
