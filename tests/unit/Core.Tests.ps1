@@ -383,6 +383,8 @@ Describe 'Arma3 Mod Workflows core' {
             $result.Data.ExitCode | Should -Be 1
             $result.Data.ProcessStartError | Should -Not -BeNullOrEmpty
             $result.Data.StandardError | Should -Not -BeNullOrEmpty
+            $result.Errors.Count | Should -Be 1
+            $result.Errors[0].Message | Should -Match 'exited with code 1'
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -420,6 +422,8 @@ Describe 'Arma3 Mod Workflows core' {
         }
         $result = & $descriptor.Invoke $context 'Detect'
         $result.Status | Should -Be 'Failed'
+        $result.Errors.Count | Should -Be 1
+        $result.Warnings.Count | Should -Be 0
     }
 
     It 'invokes a mock HEMTT executable and captures version, output, and artifacts' {
@@ -512,10 +516,12 @@ if ($args -contains '--fail') { exit 7 }
             $detectProcessFailure.Status | Should -Be 'Failed'
             $detectProcessFailure.Data.VersionExitCode | Should -Be 9
             $detectProcessFailure.Data.ExitCode | Should -Be 9
+            $detectProcessFailure.Errors.Count | Should -Be 1
             $versionProbeFailure = & $descriptor.Invoke $context 'Build'
             $versionProbeFailure.Status | Should -Be 'Failed'
             $versionProbeFailure.Data.VersionExitCode | Should -Be 9
             $versionProbeFailure.Data.Output | Should -Match 'version query failed'
+            $versionProbeFailure.Errors.Count | Should -Be 1
             @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' }).Count | Should -Be $buildInvocationsBeforeProbeFailures.Count
 
             'unparseable' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
@@ -524,11 +530,13 @@ if ($args -contains '--fail') { exit 7 }
             $detectUnparseable.Status | Should -Be 'Failed'
             $detectUnparseable.Data.VersionParseFailed | Should -BeTrue
             $detectUnparseable.Data.Output | Should -Match 'Unable to parse HEMTT version output'
+            $detectUnparseable.Errors.Count | Should -Be 1
             $context.Configuration.tools.hemtt.version = '1.2.3'
             $versionProbeUnparseable = & $descriptor.Invoke $context 'Build'
             $versionProbeUnparseable.Status | Should -Be 'Failed'
             $versionProbeUnparseable.Data.VersionMismatch | Should -BeTrue
             $versionProbeUnparseable.Data.Output | Should -Match 'Unable to determine HEMTT version'
+            $versionProbeUnparseable.Errors.Count | Should -Be 1
             @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' }).Count | Should -Be $buildInvocationsBeforeProbeFailures.Count
 
             'normal' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
@@ -540,6 +548,7 @@ if ($args -contains '--fail') { exit 7 }
             $versionMismatch.Data.Version | Should -Be '1.2.3'
             $versionMismatch.Data.ExpectedVersion | Should -Be '2.0.0'
             $versionMismatch.Data.Output | Should -Match 'version mismatch'
+            $versionMismatch.Errors.Count | Should -Be 1
             $invocationsAfterMismatch = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -notmatch '^--version(?:\s|$)' })
             $invocationsAfterMismatch.Count | Should -Be $invocationsBeforeMismatch.Count
             $context.Configuration.tools.hemtt.version = '1.2.3'
@@ -582,6 +591,7 @@ if ($args -contains '--fail') { exit 7 }
             $failureResult.Status | Should -Be 'Failed'
             $failureResult.Data.ExitCode | Should -Be 7
             $failureResult.Data.Output | Should -Match '--fail'
+            $failureResult.Errors.Count | Should -Be 1
 
             'sleep' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
             $context.Configuration.tools.hemtt.timeout_seconds = 1
@@ -590,6 +600,7 @@ if ($args -contains '--fail') { exit 7 }
             $versionProbeTimeout.Data.TimedOut | Should -BeTrue
             $versionProbeTimeout.Data.VersionExitCode | Should -Be 124
             $versionProbeTimeout.Data.Output | Should -Match 'version query timed out'
+            $versionProbeTimeout.Errors.Count | Should -Be 1
 
             'normal' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
             $context.Configuration.tools.hemtt.arguments = @('--sleep')
@@ -597,6 +608,7 @@ if ($args -contains '--fail') { exit 7 }
             $timeoutResult.Status | Should -Be 'Failed'
             $timeoutResult.Data.TimedOut | Should -BeTrue
             $timeoutResult.Data.ExitCode | Should -Be 124
+            $timeoutResult.Errors.Count | Should -Be 1
 
             'sleep' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
             $detectTimeoutResult = & $descriptor.Invoke $context 'Detect'
@@ -604,6 +616,7 @@ if ($args -contains '--fail') { exit 7 }
             $detectTimeoutResult.Data.TimedOut | Should -BeTrue
             $detectTimeoutResult.Data.VersionExitCode | Should -Be 124
             $detectTimeoutResult.Data.ExitCode | Should -Be 124
+            $detectTimeoutResult.Errors.Count | Should -Be 1
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
