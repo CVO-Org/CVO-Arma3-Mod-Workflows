@@ -978,3 +978,157 @@ class RealClass
         (Test-A3WorkflowConfiguration -Configuration $invalid).IsValid | Should -BeFalse
     }
 }
+
+
+Describe 'Validation.Dependencies module' {
+    BeforeAll {
+        $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        . (Join-Path $repositoryRoot 'src/Core/ModuleManager.ps1')
+        . (Join-Path $repositoryRoot 'src/Core/Configuration.ps1')
+        $dependencyDescriptor = & (Join-Path $repositoryRoot 'src/Modules/ValidationDependencies/Module.ps1')
+    }
+
+    It 'collects addon declarations and accepts internal and external requiredAddons references' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Dependency Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'addons/a') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'addons/b') -Force | Out-Null
+        @'
+class CfgPatches
+{
+    class Addon_A
+    {
+        requiredAddons[] = {"Addon_B", "A3_Data_F"};
+    };
+};
+'@ | Set-Content -LiteralPath (Join-Path $projectRoot 'addons/a/config.cpp')
+        @'
+class CfgPatches
+{
+    class Addon_B
+    {
+        requiredAddons[] = {};
+    };
+};
+'@ | Set-Content -LiteralPath (Join-Path $projectRoot 'addons/b/config.cpp')
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ dependencies = @{ config_files = @('addons/a/config.cpp', 'addons/b/config.cpp'); internal_addons = @('Addon_A', 'Addon_B'); severity = 'error' } } } }
+            $result = & $dependencyDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Passed'
+            $result.Data.DeclaredAddons | Should -Contain 'Addon_A'
+            $result.Data.DeclaredAddons | Should -Contain 'Addon_B'
+            $result.Data.ExternalDependenciesIgnored | Should -BeTrue
+            $result.Data.Findings.Count | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'reports missing internal addons referenced by requiredAddons' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Dependency Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        @'
+class CfgPatches
+{
+    class Addon_A
+    {
+        requiredAddons[] = {"Addon_Missing", "A3_Data_F"};
+    };
+};
+'@ | Set-Content -LiteralPath (Join-Path $projectRoot 'config.cpp')
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ dependencies = @{ config_files = @('config.cpp'); internal_addons = @('Addon_A', 'Addon_Missing'); severity = 'error' } } } }
+            $result = & $dependencyDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Failed'
+            $result.Errors.Id | Should -Contain 'DEPENDENCY_INTERNAL_ADDON_MISSING'
+            ($result.Errors | Where-Object { $_.Addon -eq 'Addon_Missing' }).ReferencedBy | Should -Contain 'Addon_A'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'detects duplicate addon declarations across config files' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Dependency Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'one') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'two') -Force | Out-Null
+        'class CfgPatches { class Duplicate_Addon { requiredAddons[] = {}; }; };' | Set-Content -LiteralPath (Join-Path $projectRoot 'one/config.cpp')
+        'class CfgPatches { class Duplicate_Addon { requiredAddons[] = {}; }; };' | Set-Content -LiteralPath (Join-Path $projectRoot 'two/config.cpp')
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ dependencies = @{ config_files = @('one/config.cpp', 'two/config.cpp'); internal_addons = @('Duplicate_Addon') } } } }
+            $result = & $dependencyDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Warning'
+            $result.Warnings.Id | Should -Contain 'DEPENDENCY_ADDON_DUPLICATE'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'ignores class-like text in comments and quoted strings' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Dependency Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        @'
+// class CfgPatches { class FakeLine {}; }
+/*
+class CfgPatches { class FakeBlock {}; };
+*/
+class CfgPatches
+{
+    class Real_Addon
+    {
+        requiredAddons[] = {"A3_Data_F"};
+        description = "class FakeString { }";
+    };
+};
+'@ | Set-Content -LiteralPath (Join-Path $projectRoot 'config.cpp')
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ dependencies = @{ config_files = @('config.cpp'); internal_addons = @('Real_Addon') } } } }
+            $result = & $dependencyDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Passed'
+            $result.Data.DeclaredAddons | Should -Contain 'Real_Addon'
+            $result.Data.DeclaredAddons.Count | Should -Be 1
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'reports missing files, missing CfgPatches, and path traversal' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Dependency Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        'class SomeOtherConfig { };' | Set-Content -LiteralPath (Join-Path $projectRoot 'other.cpp')
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ dependencies = @{ config_files = @('missing.cpp', 'other.cpp', '../outside.cpp'); internal_addons = @() } } } }
+            $result = & $dependencyDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Warning'
+            $result.Warnings.Id | Should -Contain 'DEPENDENCY_CONFIG_FILE_NOT_FOUND'
+            $result.Warnings.Id | Should -Contain 'DEPENDENCY_CFGPATCHES_NOT_FOUND'
+            $result.Warnings.Id | Should -Contain 'DEPENDENCY_PATH_OUTSIDE_PROJECT'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'skips when disabled or no config files are configured' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Dependency Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $disabled = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ dependencies = @{ enabled = $false } } } }
+            (& $dependencyDescriptor.Invoke $disabled 'Validate').Status | Should -Be 'Skipped'
+            $empty = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ dependencies = @{ config_files = @(); internal_addons = @() } } } }
+            $result = & $dependencyDescriptor.Invoke $empty 'Validate'
+            $result.Status | Should -Be 'Skipped'
+            $result.Warnings.Count | Should -Be 1
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'supports warning severity and validates dependency settings against the schema' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Dependency Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ dependencies = @{ severity = 'warning'; config_files = @('absent.cpp'); internal_addons = @() } } } }
+            $result = & $dependencyDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Warning'
+            $result.Errors.Count | Should -Be 0
+            $result.Warnings.Count | Should -Be 1
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+        $valid = @{ schema_version = 1; validation = @{ dependencies = @{ enabled = $true; severity = 'warning'; config_files = @('addons/a/config.cpp'); internal_addons = @('Addon_A') } } }
+        (Test-A3WorkflowConfiguration -Configuration $valid).IsValid | Should -BeTrue
+        $invalid = @{ schema_version = 1; validation = @{ dependencies = @{ config_files = @(42); internal_addons = @('bad addon') } } }
+        (Test-A3WorkflowConfiguration -Configuration $invalid).IsValid | Should -BeFalse
+    }
+}
