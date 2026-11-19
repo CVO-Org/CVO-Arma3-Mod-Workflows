@@ -1342,7 +1342,53 @@ exit 7
     It 'validates SQF-VM testing configuration against the schema' {
         $valid = @{ schema_version = 1; testing = @{ sqfvm = @{ enabled = $true; files = @('tests/main.sqf'); config_files = @('addons/example/config.cpp'); max_runtime_ms = 30000 } }; tools = @{ sqfvm = @{ path = 'tools/sqfvm.exe'; timeout_seconds = 60 } } }
         (Test-A3WorkflowConfiguration -Configuration $valid).IsValid | Should -BeTrue
-        $invalid = @{ schema_version = 1; testing = @{ sqfvm = @{ files = @(42); max_runtime_ms = 'fast' } } }
-        (Test-A3WorkflowConfiguration -Configuration $invalid).IsValid | Should -BeFalse
+        $invalidType = @{ schema_version = 1; testing = @{ sqfvm = @{ files = @(42); max_runtime_ms = 'fast' } } }
+        (Test-A3WorkflowConfiguration -Configuration $invalidType).IsValid | Should -BeFalse
+        $invalidRange = @{ schema_version = 1; testing = @{ sqfvm = @{ files = @('tests/main.sqf'); max_runtime_ms = -1 } } }
+        (Test-A3WorkflowConfiguration -Configuration $invalidRange).IsValid | Should -BeFalse
+    }
+
+    It 'validates the entire test manifest before launching any process' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF VM Tests " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'tests') -Force | Out-Null
+        'exitcode__ 0;' | Set-Content -LiteralPath (Join-Path $projectRoot 'tests/pass.sqf')
+        $invocationLog = Join-Path $projectRoot 'invocations.log'
+        $mockPath = Join-Path $projectRoot 'mock-sqfvm.ps1'
+        @'
+Add-Content -LiteralPath $env:SQFVM_TEST_LOG -Value 'invoked'
+exit 0
+'@ | Set-Content -LiteralPath $mockPath
+        $previousLog = $env:SQFVM_TEST_LOG
+        $env:SQFVM_TEST_LOG = $invocationLog
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ testing = @{ sqfvm = @{ files = @('tests/pass.sqf', 'tests/missing.sqf') } }; tools = @{ sqfvm = @{ path = $mockPath; timeout_seconds = 10 } } } }
+            $result = & $testDescriptor.Invoke $context 'Test'
+            $result.Status | Should -Be 'Failed'
+            $result.Errors.Id | Should -Contain 'SQFVM_FILE_NOT_FOUND'
+            $result.Data.Processes.Count | Should -Be 0
+            Test-Path -LiteralPath $invocationLog | Should -BeFalse
+        }
+        finally {
+            $env:SQFVM_TEST_LOG = $previousLog
+            Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'rejects runner-controlled arguments that could disable runtime execution' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF VM Tests " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'tests') -Force | Out-Null
+        'exitcode__ 0;' | Set-Content -LiteralPath (Join-Path $projectRoot 'tests/pass.sqf')
+        $mockPath = Join-Path $projectRoot 'mock-sqfvm.ps1'
+        'exit 0' | Set-Content -LiteralPath $mockPath
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ testing = @{ sqfvm = @{ files = @('tests/pass.sqf') } }; tools = @{ sqfvm = @{ path = $mockPath; arguments = @('--parse-only') } } } }
+            $result = & $testDescriptor.Invoke $context 'Test'
+            $result.Status | Should -Be 'Failed'
+            $result.Errors.Id | Should -Contain 'SQFVM_RESERVED_ARGUMENT'
+            $result.Data.Processes.Count | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
