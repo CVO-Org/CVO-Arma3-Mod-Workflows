@@ -131,7 +131,14 @@ function Invoke-A3WorkflowExternalProcess {
                 $configuredPath = Join-Path $projectRoot $configuredPath
             }
             if (Test-Path -LiteralPath $configuredPath -PathType Container) {
-                $configuredPath = Join-Path $configuredPath 'hemtt.exe'
+                $toolDirectory = $configuredPath
+                $configuredPath = Join-Path $toolDirectory 'hemtt.exe'
+                if (-not (Test-Path -LiteralPath $configuredPath -PathType Leaf)) {
+                    $scriptExecutable = Join-Path $toolDirectory 'hemtt.ps1'
+                    if (Test-Path -LiteralPath $scriptExecutable -PathType Leaf) {
+                        $configuredPath = $scriptExecutable
+                    }
+                }
             }
             if (Test-Path -LiteralPath $configuredPath -PathType Leaf) {
                 $executable = (Resolve-Path -LiteralPath $configuredPath).Path
