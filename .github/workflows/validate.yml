@@ -38,10 +38,11 @@ on:
         type: boolean
         default: true
 
-secrets:
-  framework-token:
-    description: Fine-grained token with contents:read access to the private framework repository
-    required: true
+
+    secrets:
+      framework-token:
+        description: Fine-grained token with contents:read access to the private framework repository
+        required: true
 
 permissions:
   contents: read
