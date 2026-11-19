@@ -46,7 +46,10 @@
                 $executable = (Resolve-Path -LiteralPath $configuredPath).Path
             }
             else {
-                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary "Configured HEMTT executable was not found: $configuredPath" -Errors @(@{ Message = 'Configured HEMTT executable does not exist.'; Path = $configuredPath }) -StartedAt $started)
+                $requiredTool = $toolConfiguration.required -eq $true
+                $missingStatus = 'Skipped'
+                if ($requiredTool) { $missingStatus = 'Failed' }
+                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status $missingStatus -Summary "Configured HEMTT executable was not found: $configuredPath" -Errors @(@{ Message = 'Configured HEMTT executable does not exist.'; Path = $configuredPath }) -StartedAt $started)
             }
         }
         else {
@@ -60,7 +63,10 @@
         }
 
         if (-not $executable) {
-            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT executable was not found. Configure tools.hemtt.path or add HEMTT to PATH.' -Errors @(@{ Message = 'HEMTT executable not found.'; Remediation = 'Set tools.hemtt.path or add hemtt.exe to PATH.' }) -StartedAt $started)
+            $requiredTool = $toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.required -eq $true
+            $missingStatus = 'Skipped'
+            if ($requiredTool) { $missingStatus = 'Failed' }
+            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status $missingStatus -Summary 'HEMTT executable was not found. Configure tools.hemtt.path or add HEMTT to PATH.' -Errors @(@{ Message = 'HEMTT executable not found.'; Remediation = 'Set tools.hemtt.path or add hemtt.exe to PATH. Set tools.hemtt.required to true to make this a failure.' }) -StartedAt $started)
         }
 
         $commandArguments = @()
