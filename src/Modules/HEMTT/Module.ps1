@@ -90,58 +90,58 @@
         $versionOutputLines = @()
         $exitCode = 1
         $versionExitCode = 0
+        $version = $null
+        $versionOutputText = ''
+        $outputText = ''
+        $versionMismatch = $false
         try {
             Set-Location -LiteralPath $projectRoot
             if ($Operation -ne 'Detect') {
                 $versionOutputLines = @(& $executable --version 2>&1 | ForEach-Object { [string]$_ })
                 $versionExitCode = $LASTEXITCODE
                 if ($null -eq $versionExitCode) { $versionExitCode = 0 }
+                $versionOutputText = $versionOutputLines -join [Environment]::NewLine
+                if ($versionOutputText -match '(?i)HEMTT\s+v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
+                    $version = $Matches[1]
+                }
+
+                if ($versionExitCode -ne 0) {
+                    $exitCode = $versionExitCode
+                    $outputText = 'HEMTT version query failed.' + [Environment]::NewLine + $versionOutputText
+                }
+                elseif ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.version) {
+                    $expectedVersion = ([string]$toolConfiguration.version).TrimStart('v')
+                    if (-not $version) {
+                        $exitCode = 1
+                        $versionMismatch = $true
+                        $outputText = "Unable to determine HEMTT version; configured version requirement is $expectedVersion."
+                    }
+                    elseif ($version -ne $expectedVersion) {
+                        $exitCode = 1
+                        $versionMismatch = $true
+                        $outputText = "HEMTT version mismatch. Expected $expectedVersion but found $version."
+                    }
+                }
             }
-            if ($Operation -eq 'Detect') {
+
+            if ($Operation -eq 'Detect' -or ($versionExitCode -eq 0 -and -not $versionMismatch)) {
                 $outputLines = @(& $executable @commandArguments 2>&1 | ForEach-Object { [string]$_ })
+                $exitCode = $LASTEXITCODE
+                if ($null -eq $exitCode) { $exitCode = 0 }
+                $outputText = $outputLines -join [Environment]::NewLine
+                if ($Operation -eq 'Detect' -and $outputText -match '(?i)HEMTT\s+v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
+                    $version = $Matches[1]
+                }
             }
-            elseif ($versionExitCode -eq 0) {
-                $outputLines = @(& $executable @commandArguments 2>&1 | ForEach-Object { [string]$_ })
-            }
-            else {
-                $outputLines = @()
-            }
-            $exitCode = $LASTEXITCODE
-            if ($null -eq $exitCode) { $exitCode = 0 }
         }
         catch {
             $outputLines += $_.Exception.Message
+            $outputText = $outputLines -join [Environment]::NewLine
             $exitCode = 1
         }
         finally {
             Set-Location -LiteralPath $previousLocation
         }
-
-        $versionOutputText = $versionOutputLines -join [Environment]::NewLine
-        $outputText = $outputLines -join [Environment]::NewLine
-        $version = $null
-        $versionText = $versionOutputText
-        if ($Operation -eq 'Detect') { $versionText = $outputText }
-        if ($versionText -match '(?i)HEMTT\s+v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
-            $version = $Matches[1]
-        }
-
-        if ($Operation -ne 'Detect' -and $versionExitCode -ne 0) {
-            $exitCode = $versionExitCode
-            $outputText = 'HEMTT version query failed.' + [Environment]::NewLine + $versionOutputText
-        }
-        if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.version) {
-            $expectedVersion = ([string]$toolConfiguration.version).TrimStart('v')
-            if (-not $version) {
-                $exitCode = 1
-                $outputText = "Unable to determine HEMTT version; configured version requirement is $expectedVersion." + [Environment]::NewLine + $outputText
-            }
-            elseif ($version -ne $expectedVersion) {
-                $exitCode = 1
-                $outputText = "HEMTT version mismatch. Expected $expectedVersion but found $version." + [Environment]::NewLine + $outputText
-            }
-        }
-
         $artifactDirectories = @()
         switch ($Operation) {
             'Dev' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/dev') }
@@ -168,6 +168,7 @@
             ExpectedVersion = if ($toolConfiguration -is [System.Collections.IDictionary]) { $toolConfiguration.version } else { $null }
             VersionOutput = $versionOutputText
             VersionExitCode = [int]$versionExitCode
+            VersionMismatch = $versionMismatch
             Arguments = $commandArguments
             ExitCode = [int]$exitCode
             Output = $outputText
