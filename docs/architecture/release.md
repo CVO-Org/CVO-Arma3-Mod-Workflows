@@ -72,7 +72,7 @@ PublisherCmd updates an existing Workshop item. Initial item creation, title/des
 
 PublisherCmd uses the Steam client API and requires the Steam client to be running and online. The workflow therefore targets a dedicated Windows self-hosted runner labelled arma3-publisher, running under the Windows account with the authenticated Steam client session. No Steam password or Steam Guard code is passed to the workflow.
 
-The Steam job has no GitHub repository-token permissions and does not check out or execute the consuming repository. Restrict the runner to trusted release workflows; never expose it to untrusted pull-request jobs.
+The Steam job has only `contents: read` permission and does not check out or execute the consuming repository. Restrict the runner to trusted release workflows; never expose it to untrusted pull-request jobs.
 
 ## Private framework access
 
