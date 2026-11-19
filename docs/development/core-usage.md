@@ -202,3 +202,35 @@ Run it with:
 
     ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Validate -Module Validation.SQF
 
+
+
+## SQF-VM automated tests
+
+The `Testing.SQFVM` module executes only the scripts explicitly listed in `testing.sqfvm.files`. It runs one fresh SQF-VM process per script, optionally loads configured `.cpp` config inputs first, and captures stdout, stderr, exit code, duration, and timeout state. The process timeout is controlled by `tools.sqfvm.timeout_seconds`; `testing.sqfvm.max_runtime_ms` optionally supplies SQF-VM's own per-process runtime limit (zero means unlimited inside SQF-VM, while the process timeout still applies).
+
+Example configuration:
+
+    {
+      "schema_version": 1,
+      "testing": {
+        "sqfvm": {
+          "enabled": true,
+          "files": ["tests/sqfvm/test_main.sqf"],
+          "config_files": ["addons/example/config.cpp"],
+          "max_runtime_ms": 30000
+        }
+      },
+      "tools": {
+        "sqfvm": {
+          "path": "tools/sqfvm.exe",
+          "required": true,
+          "timeout_seconds": 60
+        }
+      }
+    }
+
+Run tests explicitly with:
+
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Test -Module Testing.SQFVM
+
+Each test script is executed (not parse-only) as an SQF-VM input. The script is responsible for its assertions and must communicate failure through SQF-VM's process exit code (for example, by calling `exitcode__` with a nonzero failure count). A script that merely logs a failed assertion but exits with code zero will be treated as passed. Scripts run in separate processes, so VM state is not shared between files. The framework does not load mod initialization files automatically, discover tests, or claim complete Arma 3 engine compatibility. SQF-VM supports a subset of SQF commands; engine-dependent behavior still needs in-game tests.
