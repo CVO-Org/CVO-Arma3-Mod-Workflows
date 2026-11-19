@@ -8,6 +8,10 @@ on:
         required: false
         type: string
         default: Build
+      framework-ref:
+        description: Immutable tag or commit used to reference this reusable workflow
+        required: true
+        type: string
       hemtt-version:
         description: HEMTT version passed to arma-actions/hemtt
         required: false
@@ -39,7 +43,7 @@ permissions:
 
 jobs:
   hemtt:
-    name: HEMTT \${{ inputs.operation }}
+    name: HEMTT ${{ inputs.operation }}
     runs-on: windows-latest
     steps:
       - name: Check out consuming project
@@ -49,23 +53,23 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: SkippieDippie/Arma3-Mod-Workflows
-          ref: \${{ github.workflow_sha }}
+          ref: ${{ inputs.framework-ref }}
           path: .arma3-workflows
           persist-credentials: false
 
       - name: Set up HEMTT
         uses: arma-actions/hemtt@a0570ddd80d2b7be9c0f052494c0f700b42668dd
         with:
-          version: \${{ inputs.hemtt-version }}
+          version: ${{ inputs.hemtt-version }}
 
       - name: Run framework HEMTT module
         shell: pwsh
         env:
-          FRAMEWORK_SCRIPT: \${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
-          PROJECT_ROOT: \${{ inputs.project-root }}
-          CONFIG_PATH: \${{ inputs.config-path }}
-          OPERATION: \${{ inputs.operation }}
-          FAIL_ON_WARNING: \${{ inputs.fail-on-warning }}
+          FRAMEWORK_SCRIPT: ${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
+          PROJECT_ROOT: ${{ inputs.project-root }}
+          CONFIG_PATH: ${{ inputs.config-path }}
+          OPERATION: ${{ inputs.operation }}
+          FAIL_ON_WARNING: ${{ inputs.fail-on-warning }}
         run: |
           $allowed = @('Detect', 'Check', 'Dev', 'Build', 'Release')
           if ($env:OPERATION -notin $allowed) {
@@ -87,26 +91,34 @@ jobs:
           & $env:FRAMEWORK_SCRIPT @arguments
 
       - name: Upload development build
-        if: \${{ inputs.operation == 'Dev' }}
+        if: ${{ inputs.operation == 'Dev' }}
         uses: actions/upload-artifact@v4
         with:
-          name: hemtt-dev-\${{ github.run_id }}-\${{ github.run_attempt }}
-          path: \${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/dev/**' }}
+          name: hemtt-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/dev/**' }}
           if-no-files-found: error
 
       - name: Upload test build
-        if: \${{ inputs.operation == 'Build' }}
+        if: ${{ inputs.operation == 'Build' }}
         uses: actions/upload-artifact@v4
         with:
-          name: hemtt-build-\${{ github.run_id }}-\${{ github.run_attempt }}
-          path: \${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/build/**' }}
+          name: hemtt-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/build/**' }}
           if-no-files-found: error
 
       - name: Upload release build
-        if: \${{ inputs.operation == 'Release' }}
+        if: ${{ inputs.operation == 'Release' }}
         uses: actions/upload-artifact@v4
         with:
-          name: hemtt-release-\${{ github.run_id }}-\${{ github.run_attempt }}
-          path: \${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/release/**
+          name: hemtt-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/release/**' }}
 releases/**' }}
+
+      - name: Upload project release directory
+        if: ${{ inputs.operation == 'Release' && inputs.artifact-path == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hemtt-project-releases-${{ github.run_id }}-${{ github.run_attempt }}
+          path: releases/**
+          if-no-files-found: ignore
           if-no-files-found: error
