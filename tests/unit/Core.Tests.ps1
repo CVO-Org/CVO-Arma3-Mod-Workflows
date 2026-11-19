@@ -420,6 +420,17 @@ if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
                 (Get-Location).Path | Should -Be $locationBefore
             }
 
+            $releaseOutput = Join-Path $projectRoot '.hemttout/release'
+            $releaseArchives = Join-Path $projectRoot 'releases'
+            New-Item -ItemType Directory -Path $releaseOutput -Force | Out-Null
+            New-Item -ItemType Directory -Path $releaseArchives -Force | Out-Null
+            'release pbo' | Set-Content -LiteralPath (Join-Path $releaseOutput 'release.pbo') -Encoding UTF8
+            'release zip' | Set-Content -LiteralPath (Join-Path $releaseArchives 'MockProject-latest.zip') -Encoding UTF8
+            $releaseResult = & $descriptor.Invoke $context 'Release'
+            $releaseResult.Status | Should -Be 'Passed'
+            $releaseResult.Data.Artifacts | Should -Contain (Join-Path $releaseOutput 'release.pbo')
+            $releaseResult.Data.Artifacts | Should -Contain (Join-Path $releaseArchives 'MockProject-latest.zip')
+
             $context.Configuration.tools.hemtt.arguments = @('--fail')
             $failureResult = & $descriptor.Invoke $context 'Build'
             $failureResult.Status | Should -Be 'Failed'
