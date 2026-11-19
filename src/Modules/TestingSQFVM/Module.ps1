@@ -74,6 +74,16 @@
         if ($settings -is [System.Collections.IDictionary] -and $settings.Contains('config_files')) { $configFiles = @($settings.config_files) }
         $extraArguments = @()
         if ($tool -is [System.Collections.IDictionary] -and $tool.Contains('arguments')) { $extraArguments = @($tool.arguments) }
+        $reservedArguments = @('--automated', '--suppress-welcome', '--no-execute-print', '--parse-only', '--input-sqf', '--input-config', '--max-runtime')
+        $conflictingArguments = @()
+        foreach ($argument in $extraArguments) {
+            $argumentName = ([string]$argument -split '=', 2)[0]
+            if ($reservedArguments -contains $argumentName) { $conflictingArguments += [string]$argument }
+        }
+        if ($conflictingArguments.Count -gt 0) {
+            $watch.Stop()
+            return (New-A3WorkflowModuleResult -Module 'Testing.SQFVM' -Operation $Operation -Status Failed -Summary 'SQF-VM extra arguments conflict with runner-controlled execution options.' -Errors @(@{ Id = 'SQFVM_RESERVED_ARGUMENT'; Message = 'Remove runner-controlled arguments from tools.sqfvm.arguments.'; Arguments = $conflictingArguments; Tool = 'SQF-VM' }) -StartedAt $started -DurationMs ([Math]::Max(1, $watch.ElapsedMilliseconds)) -Data @{ Checks = @(); TestCount = 0; Processes = @(); Tool = @{ Name = 'SQF-VM'; Path = $toolPath }; ProjectRoot = $projectRoot; ExecutionMode = 'ExplicitTestScripts' })
+        }
         $findings = New-Object System.Collections.Generic.List[object]
         $checks = New-Object System.Collections.Generic.List[object]
         $errors = New-Object System.Collections.Generic.List[object]
