@@ -448,7 +448,7 @@ if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
                 (Get-Location).Path | Should -Be $locationBefore
             }
 
-            $releaseOutput = Join-Path $projectRoot '.hemttout/release'
+            $releaseOutput = Join-Path $projectRoot '.hemttout/releases'
             $releaseArchives = Join-Path $projectRoot 'releases'
             New-Item -ItemType Directory -Path $releaseOutput -Force | Out-Null
             New-Item -ItemType Directory -Path $releaseArchives -Force | Out-Null
