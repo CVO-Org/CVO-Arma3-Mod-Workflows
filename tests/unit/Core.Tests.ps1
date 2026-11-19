@@ -364,6 +364,57 @@ Describe 'Arma3 Mod Workflows core' {
         $result.Status | Should -Be 'Failed'
     }
 
+    It 'invokes a mock HEMTT executable and captures version, output, and artifacts' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $hemttDirectory = Join-Path $projectRoot '.hemtt'
+            New-Item -ItemType Directory -Path $hemttDirectory -Force | Out-Null
+            'name = "MockProject"' | Set-Content -LiteralPath (Join-Path $hemttDirectory 'project.toml') -Encoding UTF8
+
+            $mockExecutable = Join-Path $projectRoot 'mock-hemtt.ps1'
+            @'
+$global:LASTEXITCODE = 0
+Write-Output 'HEMTT v1.2.3'
+Write-Output ("Mock received: " + ($args -join ' '))
+if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
+'@ | Set-Content -LiteralPath $mockExecutable -Encoding UTF8
+
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{
+                    paths = @{ hemtt_config = '.hemtt/project.toml' }
+                    tools = @{ hemtt = @{ path = $mockExecutable } }
+                }
+                Logger = $null
+            }
+
+            $detectResult = & $descriptor.Invoke $context 'Detect'
+            $detectResult.Status | Should -Be 'Passed'
+            $detectResult.Data.Version | Should -Be '1.2.3'
+            $detectResult.Data.Arguments | Should -Contain '--version'
+            $detectResult.Data.Output | Should -Match 'Mock received: --version'
+
+            $artifactDirectory = Join-Path $projectRoot '.hemttout/build'
+            New-Item -ItemType Directory -Path $artifactDirectory -Force | Out-Null
+            'mock artifact' | Set-Content -LiteralPath (Join-Path $artifactDirectory 'test.pbo') -Encoding UTF8
+
+            $buildResult = & $descriptor.Invoke $context 'Build'
+            $buildResult.Status | Should -Be 'Passed'
+            $buildResult.Data.Arguments | Should -Contain 'build'
+            $buildResult.Data.Output | Should -Match 'Mock received: build'
+            $buildResult.Data.Artifacts | Should -Contain (Join-Path $artifactDirectory 'test.pbo')
+
+            $context.Configuration.tools.hemtt.arguments = @('--fail')
+            $failureResult = & $descriptor.Invoke $context 'Build'
+            $failureResult.Status | Should -Be 'Failed'
+            $failureResult.Data.ExitCode | Should -Be 7
+            $failureResult.Data.Output | Should -Match '--fail'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'merges project overrides over framework defaults' {
         $defaults = @{ paths = @{ build_output = '.build'; release_output = 'release' }; modules = @{ build = @{ enabled = $true } } }
         $project = @{ paths = @{ build_output = 'out' }; modules = @{ build = @{ enabled = $false } } }
