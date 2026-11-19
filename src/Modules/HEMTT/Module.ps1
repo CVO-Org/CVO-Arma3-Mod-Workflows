@@ -203,6 +203,11 @@ function Invoke-A3WorkflowExternalProcess {
             $commandArguments += @($toolConfiguration.arguments)
         }
 
+        # Check-only options must not leak into the --version preflight or other commands.
+        if ($Operation -eq 'Check' -and $toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.check_arguments) {
+            $commandArguments += @($toolConfiguration.check_arguments)
+        }
+
         $artifactDirectories = @()
         switch ($Operation) {
             'Dev' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/dev') }
