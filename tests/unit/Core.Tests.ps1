@@ -478,6 +478,8 @@ if ($args -contains '--fail') { exit 7 }
             $detectResult.Status | Should -Be 'Passed'
             $detectResult.Data.Version | Should -Be '1.2.3'
             $detectResult.Data.Arguments | Should -Contain '--version'
+            $detectResult.Data.Arguments | Should -Contain '--mock-option'
+            $detectResult.Data.Arguments | Should -Contain 'value with spaces'
             $detectResult.Data.StandardOutput | Should -Match 'Mock received: --version'
             $detectResult.Data.StandardError | Should -Match 'Mock stderr'
             $detectResult.Data.Output | Should -Match 'Mock received: --version'
