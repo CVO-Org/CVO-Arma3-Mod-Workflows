@@ -241,6 +241,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "default": 600
         }
       }
     },
