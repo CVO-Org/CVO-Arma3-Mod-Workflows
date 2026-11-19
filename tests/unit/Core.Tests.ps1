@@ -780,7 +780,6 @@ if ($args -contains '--fail') { exit 7 }
         $merged.modules.build.enabled | Should -BeFalse
     }
 
-
 Describe 'Validation.Assets module' {
     BeforeAll {
         $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
