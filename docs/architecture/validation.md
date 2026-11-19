@@ -86,6 +86,7 @@ The framework targets Windows PowerShell 5.1 and PowerShell 7. New validation co
 
 - [HEMTT check command](https://hemtt.dev/commands/check.html) — check behavior and lint-related options.
 - [SQF-VM source repository](https://github.com/SQFvm/runtime) — supported SQF runtime subset and command-line usage.
+- [PBO file format](https://community.bohemia.net/wiki/PBO_File_Format) — entry headers, properties blocks, data sections, and optional checksum/signature records.
 
 ## Non-goals
 
