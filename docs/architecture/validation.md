@@ -78,7 +78,6 @@ The framework targets Windows PowerShell 5.1 and PowerShell 7. New validation co
 ## References
 
 - [HEMTT check command](https://hemtt.dev/commands/check.html) — check behavior and lint-related options.
-- [SQF-VM source repository](https://github.com/SQFvm/runtime) — virtual-machine scope and current project documentation.
 - [SQF-VM source repository](https://github.com/SQFvm/runtime) — supported SQF runtime subset and command-line usage.
 
 ## Non-goals
