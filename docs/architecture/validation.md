@@ -10,8 +10,8 @@ Validation is additive to HEMTT, not a replacement for it. HEMTT remains respons
 
 The framework uses the existing module execution pipeline. A validation run uses the `Check` operation:
 
-1. The HEMTT module runs `hemtt check` when it is enabled and available.
-2. Framework validation modules run checks that HEMTT does not already provide, or checks whose diagnostics or policy need to be standardized by the framework.
+1. The HEMTT module runs `hemtt check` when it is enabled and available. HEMTT documents that this runs the same checks as `hemtt dev` without writing files; its `--pedantic` option enables additional lints, and `--error-on-all` promotes help and warning messages to errors.
+2. Framework validation modules run checks that are demonstrably outside HEMTT's checks, or checks whose diagnostics or policy need to be standardized by the framework.
 3. The core normalizes each module result and applies the existing exit-code policy.
 
 Validation modules must not invoke HEMTT a second time. They must not silently build or package the project. A package validation check may inspect an artifact supplied by an earlier build, but it must not trigger that build itself.
@@ -22,7 +22,7 @@ The configuration already reserves these categories under `validation`:
 
 | Category | Responsibility | Initial ownership |
 | --- | --- | --- |
-| `sqf` | SQF source analysis beyond checks already performed by HEMTT | Optional dedicated analyzer; capability-detected |
+| `sqf` | SQF source analysis beyond HEMTT's configured lint checks | Evaluate additional analyzers only where they provide distinct coverage; do not assume SQF-VM is a static linter |
 | `config` | Config-specific structural and reference checks not covered by HEMTT | Framework checks and optional parsers |
 | `assets` | Missing or incorrectly referenced project assets | Framework checks |
 | `dependencies` | Declared addon/mod dependency consistency | Framework checks |
@@ -53,9 +53,15 @@ A finding with severity `error` makes its module result `Failed`; a warning-only
 
 ## Configuration and compatibility
 
-The current configuration schema already defines the validation categories and the optional `sqfvm` and `sqflint` tool entries. Their command-line contracts must be documented and tested before either tool is invoked by the framework. Tool paths may be configured explicitly or resolved from `PATH`; relative paths resolve against the consuming project root.
+The current configuration schema already defines the validation categories and optional `sqfvm` and `sqflint` tool entries. SQF-VM is an SQF virtual machine intended for execution and unit-testing scenarios, not a drop-in static linter; its supported Arma command coverage must be considered before using it to validate production scripts. SQFLint describes itself as a basic SQF syntax checker and has a Java runtime requirement. Their command-line contracts, maintenance status, and diagnostic formats must be verified and tested before either tool is invoked by the framework. Tool paths may be configured explicitly or resolved from `PATH`; relative paths resolve against the consuming project root.
 
 The framework targets Windows PowerShell 5.1 and PowerShell 7. New validation code must remain compatible with both. Tests should use mock executables and temporary project trees; CI must not require Arma 3 or install proprietary game content.
+
+## References
+
+- [HEMTT check command](https://hemtt.dev/commands/check.html) — check behavior and lint-related options.
+- [SQF-VM source repository](https://github.com/SQFvm/runtime) — virtual-machine scope and current project documentation.
+- [SQFLint source repository](https://github.com/SkaceKamen/sqflint) — basic SQF syntax-checking scope and runtime requirements.
 
 ## Non-goals
 
