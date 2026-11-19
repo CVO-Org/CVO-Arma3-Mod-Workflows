@@ -171,7 +171,29 @@
           }
         },
         "package": {
-          "$ref": "#/$defs/checkToggle"
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "severity": { "type": "string", "enum": ["error", "warning"] },
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  { "type": "string", "minLength": 1 },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["path"],
+                    "properties": {
+                      "path": { "type": "string", "minLength": 1 },
+                      "required_entries": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+                    }
+                  }
+                ]
+              }
+            }
+          }
         }
       }
     },
