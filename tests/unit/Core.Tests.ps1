@@ -208,6 +208,30 @@ Describe 'Arma3 Mod Workflows core' {
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'returns exit code 0 when no modules are enabled' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            '{"schema_version":1}' | Set-Content -LiteralPath (Join-Path $projectRoot 'arma3-workflows.json') -Encoding UTF8
+            $cli = Join-Path $repositoryRoot 'src/Invoke-Arma3ModWorkflows.ps1'
+            $null = @(& (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File $cli -ProjectRoot $projectRoot 2>&1)
+            $LASTEXITCODE | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'returns exit code 2 when a requested module is not registered' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            '{"schema_version":1}' | Set-Content -LiteralPath (Join-Path $projectRoot 'arma3-workflows.json') -Encoding UTF8
+            $cli = Join-Path $repositoryRoot 'src/Invoke-Arma3ModWorkflows.ps1'
+            $null = @(& (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File $cli -ProjectRoot $projectRoot -Module 'Missing.Module' 2>&1)
+            $LASTEXITCODE | Should -Be 2
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'merges project overrides over framework defaults' {
         $defaults = @{ paths = @{ build_output = '.build'; release_output = 'release' }; modules = @{ build = @{ enabled = $true } } }
         $project = @{ paths = @{ build_output = 'out' }; modules = @{ build = @{ enabled = $false } } }
