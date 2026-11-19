@@ -30,10 +30,18 @@ The returned context contains the project root, framework root, merged configura
 
 Modules execute in dependency order. Missing dependencies and circular dependencies are preflight errors. Module exceptions are converted into failed results; dependent modules are skipped when a dependency fails or is skipped. Results use the statuses `Passed`, `Warning`, `Failed`, and `Skipped`.
 
+## Command-line entry point
+
+Run the framework from PowerShell:
+
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -ListModules
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Run
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Run -Module Build.HEMTT
+
+Use `-ConfigPath` to select a non-default configuration file, `-EnableConsoleLog` to mirror log messages to the console, and `-FailOnWarning` to return exit code 1 when a module reports a warning. Exit codes are 0 for success, 1 for failed module results or configured warning failure, and 2 for initialization or command errors.
+
 ## Current limitations
 
 - YAML requires `powershell-yaml`; JSON does not.
-- Framework modules are discovered from immediate child folders of `src/Modules`, each containing a `Module.ps1` descriptor. Configuration uses `modules.<ConfigKey>.enabled`; absent keys default to enabled. Project-specific modules may still be registered explicitly.
-- No build, validation, testing, or release capability modules are registered yet.
-- A unified public command-line entry point is not yet implemented; the current public interface is the exported PowerShell module functions.
+- No build, validation, testing, or release capability modules are registered yet; the discovery mechanism and CLI are infrastructure only.
 - The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
