@@ -69,8 +69,28 @@ Describe 'Arma3 Mod Workflows core' {
     }
 
     It 'accepts HEMTT version pins and shared CLI arguments' {
-        $config = @{ schema_version = 1; tools = @{ hemtt = @{ version = '1.21.0'; required = $true; arguments = @('--no-color') } } }
+        $config = @{ schema_version = 1; tools = @{ hemtt = @{ version = '1.21.0'; required = $true; arguments = @('--no-color'); timeout_seconds = 600 } } }
         (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeTrue
+    }
+
+    It 'rejects non-positive HEMTT process timeouts at execution time' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $hemttDirectory = Join-Path $projectRoot '.hemtt'
+            New-Item -ItemType Directory -Path $hemttDirectory -Force | Out-Null
+            'name = "MockProject"' | Set-Content -LiteralPath (Join-Path $hemttDirectory 'project.toml') -Encoding UTF8
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ paths = @{ hemtt_config = '.hemtt/project.toml' }; tools = @{ hemtt = @{ path = (Join-Path $PSHOME 'pwsh.exe'); timeout_seconds = 0 } } }
+                Logger = $null
+            }
+            $result = & $descriptor.Invoke $context 'Build'
+            $result.Status | Should -Be 'Failed'
+            $result.Summary | Should -Match 'timeout_seconds must be at least 1'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     It 'rejects non-string tool arguments' {
