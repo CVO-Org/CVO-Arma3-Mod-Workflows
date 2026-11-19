@@ -30,7 +30,11 @@ The configuration already reserves these categories under `validation`:
 
 Each category can be disabled independently. The existing `severity` setting controls whether a finding is treated as an error or warning. A category disabled by configuration is not a passing check; it is reported as skipped or omitted with an explicit reason.
 
-The initial implementation should be incremental. A category must not claim coverage until its checks and fixtures exist. Tool-backed checks must detect the executable and version before execution, use configured timeouts, capture stdout/stderr, and return structured failures. Tools are never downloaded or installed automatically.
+The initial implementation should be incremental. A category must not claim coverage until its checks and fixtures exist. Tool-backed checks must detect the executable before execution, verify versions when the tool exposes a supported version query, use configured timeouts, capture stdout/stderr, and return structured failures. Tools are never downloaded or installed automatically.
+
+## Initial SQF validation scope
+
+The first SQF source validator is `Validation.SQF`, an adapter for SQFLint. Projects explicitly list `.sqf` files in `validation.sqf.files`; the adapter invokes SQFLint once per file, requests JSON diagnostics and a meaningful process exit code, and normalizes error/warning records. It requires an explicitly configured executable or JAR path (or a `sqflint` executable on `PATH`). For a JAR, Java must be available on `PATH`. The upstream CLI does not document a version query, so the adapter reports the version as unknown and rejects a configured version pin rather than pretending it verified one. The tool is optional unless `tools.sqflint.required` is true. This check is limited to the analyzer's syntax/static diagnostics and does not execute SQF in Arma 3 or prove runtime correctness. It does not duplicate HEMTT's configured lint checks; projects should choose which diagnostics they want enabled to avoid redundant output.
 
 ## Initial addon dependency validation scope
 
@@ -67,7 +71,7 @@ A finding with severity `error` makes its module result `Failed`; a warning-only
 
 ## Configuration and compatibility
 
-The current configuration schema already defines the validation categories and optional `sqfvm` and `sqflint` tool entries. SQF-VM is an SQF virtual machine intended for execution and unit-testing scenarios, not a drop-in static linter; its supported Arma command coverage must be considered before using it to validate production scripts. SQFLint describes itself as a basic SQF syntax checker and has a Java runtime requirement. Their command-line contracts, maintenance status, and diagnostic formats must be verified and tested before either tool is invoked by the framework. Tool paths may be configured explicitly or resolved from `PATH`; relative paths resolve against the consuming project root.
+The current configuration schema already defines the validation categories and optional `sqfvm` and `sqflint` tool entries. SQF-VM is an SQF virtual machine intended for execution and unit-testing scenarios, not a drop-in static linter; its supported Arma command coverage must be considered before using it to validate production scripts. SQFLint describes itself as a basic SQF syntax checker and has a Java runtime requirement. SQFLint's documented CLI supports one file per invocation, JSON diagnostics (`-j`), and process error exit codes (`-oc`); its upstream README states a JRE 1.8 requirement. The CLI does not expose a documented version query, so the framework must not claim version verification for it. SQF-VM remains a separate execution/testing tool rather than a drop-in static linter. Tool paths may be configured explicitly or resolved from `PATH`; relative paths resolve against the consuming project root.
 
 The framework targets Windows PowerShell 5.1 and PowerShell 7. New validation code must remain compatible with both. Tests should use mock executables and temporary project trees; CI must not require Arma 3 or install proprietary game content.
 
