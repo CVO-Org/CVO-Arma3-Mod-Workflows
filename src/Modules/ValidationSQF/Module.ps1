@@ -71,6 +71,12 @@
             $processPath = $javaCommands[0].Source
             $processPrefix = @('-jar', $toolPath)
         }
+        elseif ([IO.Path]::GetExtension($toolPath) -ieq '.ps1') {
+            $hostExecutable = Join-Path $PSHOME 'pwsh.exe'
+            if (-not (Test-Path -LiteralPath $hostExecutable)) { $hostExecutable = Join-Path $PSHOME 'powershell.exe' }
+            $processPath = $hostExecutable
+            $processPrefix = @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', $toolPath)
+        }
         else {
             $processPath = $toolPath
         }
@@ -218,7 +224,7 @@
             if ($severity -eq 'error') { $status = 'Failed'; $summary = "SQFLint reported $($findings.Count) SQF finding(s)." }
             else { $status = 'Warning'; $summary = "SQFLint reported $($findings.Count) SQF finding(s)." }
         }
-        return (New-A3WorkflowModuleResult -Module 'Validation.SQF' -Operation $Operation -Status $status -Summary $summary -Errors @($errors.ToArray()) -Warnings @($findings | Where-Object { $_.Severity -eq 'warning' }) -StartedAt $started -DurationMs ([Math]::Max(1, $watch.ElapsedMilliseconds)) -Data @{
+        return (New-A3WorkflowModuleResult -Module 'Validation.SQF' -Operation $Operation -Status $status -Summary $summary -Errors @(@($errors.ToArray()) + @($findings | Where-Object { $_.Severity -eq 'error' })) -Warnings @($findings | Where-Object { $_.Severity -eq 'warning' }) -StartedAt $started -DurationMs ([Math]::Max(1, $watch.ElapsedMilliseconds)) -Data @{
             Checks = @($checks.ToArray())
             Findings = @($findings.ToArray())
             CheckedCount = $checks.Count
