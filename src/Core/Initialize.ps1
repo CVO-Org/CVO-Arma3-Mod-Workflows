@@ -3,6 +3,8 @@ function Initialize-A3Workflow {
  param([Parameter(Mandatory=$true)][string]$ProjectRoot,[string]$ConfigPath,[string]$FrameworkRoot=(Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,[switch]$EnableConsoleLog)
  foreach($file in @('Logging.ps1','Configuration.ps1','ModuleManager.ps1')){$component=Join-Path $PSScriptRoot $file;if(-not(Test-Path -LiteralPath $component -PathType Leaf)){throw "Missing core component: $component"};. $component}
  $loaded=Get-A3WorkflowConfiguration -ProjectRoot $ProjectRoot -ConfigPath $ConfigPath
+ $defaultsPath=Join-Path $FrameworkRoot 'config/defaults/configuration.json'
+ if(Test-Path -LiteralPath $defaultsPath -PathType Leaf){$defaults=Read-A3WorkflowConfigurationFile -Path $defaultsPath;$loaded.Values=Merge-A3WorkflowConfiguration -Base $defaults -Override $loaded.Values}
  $reportDir='.arma3-workflows/reports';if($loaded.Values.paths -is [hashtable] -and $loaded.Values.paths.report_output){$reportDir=[string]$loaded.Values.paths.report_output}
  if(-not [IO.Path]::IsPathRooted($reportDir)){$reportDir=Join-Path $loaded.ProjectRoot $reportDir}
  $logger=New-A3WorkflowLogger -LogPath (Join-Path $reportDir 'framework.log') -MinimumLevel Info -Console:$EnableConsoleLog
