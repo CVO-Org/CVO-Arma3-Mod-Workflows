@@ -121,7 +121,7 @@ function Invoke-A3WorkflowExternalProcess {
         }
 
         if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.Contains('enabled') -and $toolConfiguration.enabled -eq $false) {
-            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary 'HEMTT is disabled in tool configuration.' -StartedAt $started)
+            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary 'HEMTT is disabled in tool configuration.' -StartedAt $started -DurationMs ([Math]::Max(1, $durationWatch.ElapsedMilliseconds)))
         }
 
         $executable = $null
@@ -157,10 +157,10 @@ function Invoke-A3WorkflowExternalProcess {
         if (-not $executable) {
             $diagnostic = @{ Message = 'HEMTT executable not found.'; Remediation = 'Set tools.hemtt.path or add hemtt.exe to PATH. Set tools.hemtt.required to true to make this a failure.' }
             if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.required -eq $true) {
-                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT executable was not found. Configure tools.hemtt.path or add HEMTT to PATH.' -Errors @($diagnostic) -StartedAt $started)
+                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT executable was not found. Configure tools.hemtt.path or add HEMTT to PATH.' -Errors @($diagnostic) -StartedAt $started -DurationMs ([Math]::Max(1, $durationWatch.ElapsedMilliseconds)))
 
             }
-            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary 'HEMTT executable was not found. Configure tools.hemtt.path or add HEMTT to PATH.' -Warnings @($diagnostic) -StartedAt $started)
+            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary 'HEMTT executable was not found. Configure tools.hemtt.path or add HEMTT to PATH.' -Warnings @($diagnostic) -StartedAt $started -DurationMs ([Math]::Max(1, $durationWatch.ElapsedMilliseconds)))
         }
 
         if ($Operation -ne 'Detect') {
