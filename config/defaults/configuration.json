@@ -14,25 +14,74 @@
       "arguments": [],
       "check_arguments": [],
       "timeout_seconds": 600
+    },
+    "sqfvm": {
+      "enabled": true,
+      "required": false,
+      "arguments": [],
+      "timeout_seconds": 600
     }
   },
   "modules": {
-    "build": {"enabled": true},
-    "validation": {"enabled": true},
-    "testing": {"enabled": true},
-    "release": {"enabled": false},
-    "utilities": {"enabled": true}
+    "build": {
+      "enabled": true
+    },
+    "validation": {
+      "enabled": true
+    },
+    "testing": {
+      "enabled": true
+    },
+    "release": {
+      "enabled": false
+    },
+    "utilities": {
+      "enabled": true
+    }
   },
   "validation": {
-    "sqf": {"enabled": true, "severity": "error", "files": []},
-    "config": {"enabled": true, "severity": "error", "required_classes": []},
-    "assets": {"enabled": true, "severity": "error", "references": []},
-    "dependencies": {"enabled": true, "severity": "warning", "config_files": [], "internal_addons": []},
-    "package": {"enabled": true, "severity": "error"}
+    "sqf": {
+      "enabled": true,
+      "severity": "error",
+      "files": []
+    },
+    "config": {
+      "enabled": true,
+      "severity": "error",
+      "required_classes": []
+    },
+    "assets": {
+      "enabled": true,
+      "severity": "error",
+      "references": []
+    },
+    "dependencies": {
+      "enabled": true,
+      "severity": "warning",
+      "config_files": [],
+      "internal_addons": []
+    },
+    "package": {
+      "enabled": true,
+      "severity": "error"
+    }
   },
-  "testing": {"automated": {"enabled": true}, "in_game": {"enabled": true}},
+  "testing": {
+    "automated": {
+      "enabled": true
+    },
+    "in_game": {
+      "enabled": true
+    }
+  },
   "distribution": {
-    "github": {"enabled": true, "draft": false, "prerelease": false},
-    "steam": {"enabled": false}
+    "github": {
+      "enabled": true,
+      "draft": false,
+      "prerelease": false
+    },
+    "steam": {
+      "enabled": false
+    }
   }
 }
