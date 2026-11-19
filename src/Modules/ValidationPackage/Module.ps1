@@ -127,7 +127,7 @@
                                     throw 'PBO header contains an invalid empty-name entry.'
                                 }
 
-                                if ($entryName -match '[\x00-\x1F]' -or $entryName.StartsWith('/') -or $entryName -match '^[A-Za-z]:') {
+                                if ($entryName -match '[\x00-\x1F]' -or $entryName.StartsWith('/') -or $entryName.StartsWith('\') -or $entryName -match '^[A-Za-z]:') {
                                     throw "PBO contains an invalid entry path '$entryName'."
                                 }
                                 if ($entryName -match '(^|[\\/])\.\.([\\/]|$)') {
