@@ -32,6 +32,11 @@ on:
         required: false
         type: boolean
         default: false
+      fail-on-skipped:
+        description: Fail when a selected validation module is skipped, for example because its manifest is empty or an optional tool is unavailable
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -48,18 +53,19 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: SkippieDippie/Arma3-Mod-Workflows
-          ref: \${{ inputs.framework-ref }}
+          ref: ${{ inputs.framework-ref }}
           path: .arma3-workflows
           persist-credentials: false
 
       - name: Run framework validation modules
         shell: pwsh
         env:
-          FRAMEWORK_SCRIPT: \${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
-          PROJECT_ROOT: \${{ inputs.project-root }}
-          CONFIG_PATH: \${{ inputs.config-path }}
-          MODULES: \${{ inputs.modules }}
-          FAIL_ON_WARNING: \${{ inputs.fail-on-warning }}
+          FRAMEWORK_SCRIPT: ${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
+          PROJECT_ROOT: ${{ inputs.project-root }}
+          CONFIG_PATH: ${{ inputs.config-path }}
+          MODULES: ${{ inputs.modules }}
+          FAIL_ON_WARNING: ${{ inputs.fail-on-warning }}
+          FAIL_ON_SKIPPED: ${{ inputs.fail-on-skipped }}
         run: |
           $allowed = @(
             'Validation.Assets',
@@ -97,4 +103,22 @@ jobs:
             $arguments += '-FailOnWarning'
           }
 
-          & $env:FRAMEWORK_SCRIPT @arguments
+          $output = & pwsh -NoProfile -NonInteractive -File $env:FRAMEWORK_SCRIPT @arguments 2>&1 | Out-String
+          $frameworkExitCode = $LASTEXITCODE
+
+          try {
+            $results = @($output | ConvertFrom-Json -ErrorAction Stop)
+          }
+          catch {
+            throw "Framework CLI did not return valid JSON (exit code $frameworkExitCode). Output: $output"
+          }
+
+          $skipped = @($results | Where-Object { $_.Status -eq 'Skipped' })
+          if ($env:FAIL_ON_SKIPPED -eq 'true' -and $skipped.Count -gt 0) {
+            $details = @($skipped | ForEach-Object { "$($_.Module): $($_.Summary)" }) -join '; '
+            throw "One or more selected validation modules were skipped: $details"
+          }
+
+          if ($frameworkExitCode -ne 0) {
+            throw "Framework validation failed with exit code $frameworkExitCode. Output: $output"
+          }
