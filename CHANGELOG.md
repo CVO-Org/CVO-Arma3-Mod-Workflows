@@ -18,7 +18,7 @@ The project follows Semantic Versioning once the first stable release is publish
 - Initial `Testing.SQFVM` module for explicit SQF test-script execution in isolated processes, optional config inputs, runtime/process timeouts, output capture, and exit-code-based pass/fail reporting.
 - Initial `Validation.Package` module for explicit PBO artifact manifests, path safety, structural header and data-boundary checks, and optional required-entry verification.
 - Pester unit and integration coverage for core behavior and HEMTT process execution, failure handling, and artifact reporting.
-- Windows CI coverage for PowerShell 7 and a dedicated Windows PowerShell 5.1 HEMTT compatibility smoke test.
+- Windows CI coverage for PowerShell 7 and a dedicated Windows PowerShell 5.1 compatibility smoke test covering HEMTT, SQF-VM validation/testing, and PBO package inspection.
 - Core, HEMTT, and validation architecture documentation.
 
 ### Notes
