@@ -314,6 +314,34 @@ Describe 'Arma3 Mod Workflows core' {
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'fails HEMTT builds when the configured project file is missing' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ paths = @{ hemtt_config = '.hemtt/project.toml' }; tools = @{} }
+                Logger = $null
+            }
+            $result = & $descriptor.Invoke $context 'Build'
+            $result.Status | Should -Be 'Failed'
+            $result.Summary | Should -Match 'configuration was not found'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'skips HEMTT when explicitly disabled in tool configuration' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $context = [pscustomobject]@{
+            ProjectRoot = ([IO.Path]::GetTempPath())
+            Configuration = @{ paths = @{}; tools = @{ hemtt = @{ enabled = $false } } }
+            Logger = $null
+        }
+        $result = & $descriptor.Invoke $context 'Detect'
+        $result.Status | Should -Be 'Skipped'
+    }
+
     It 'merges project overrides over framework defaults' {
         $defaults = @{ paths = @{ build_output = '.build'; release_output = 'release' }; modules = @{ build = @{ enabled = $true } } }
         $project = @{ paths = @{ build_output = 'out' }; modules = @{ build = @{ enabled = $false } } }
