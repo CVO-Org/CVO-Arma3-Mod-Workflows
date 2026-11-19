@@ -1,0 +1,13 @@
+function Initialize-A3Workflow {
+ [CmdletBinding()]
+ param([Parameter(Mandatory=$true)][string]$ProjectRoot,[string]$ConfigPath,[string]$FrameworkRoot=(Split-Path -Parent $PSScriptRoot),[switch]$EnableConsoleLog)
+ foreach($file in @('Logging.ps1','Configuration.ps1','ModuleManager.ps1')){$component=Join-Path $PSScriptRoot $file;if(-not(Test-Path -LiteralPath $component -PathType Leaf)){throw "Missing core component: $component"};. $component}
+ $loaded=Get-A3WorkflowConfiguration -ProjectRoot $ProjectRoot -ConfigPath $ConfigPath
+ $reportDir='.arma3-workflows/reports';if($loaded.Values.paths -is [hashtable] -and $loaded.Values.paths.report_output){$reportDir=[string]$loaded.Values.paths.report_output}
+ if(-not [IO.Path]::IsPathRooted($reportDir)){$reportDir=Join-Path $loaded.ProjectRoot $reportDir}
+ $logger=New-A3WorkflowLogger -LogPath (Join-Path $reportDir 'framework.log') -MinimumLevel Info -Console:$EnableConsoleLog
+ $registry=New-A3WorkflowModuleRegistry
+ $context=[pscustomobject]@{ProjectRoot=$loaded.ProjectRoot;FrameworkRoot=(Resolve-Path -LiteralPath $FrameworkRoot -ErrorAction Stop).Path;FrameworkVersion='0.1.0-dev';Configuration=$loaded.Values;ConfigurationPath=$loaded.ConfigPath;Logger=$logger;Registry=$registry;StartedAt=[DateTime]::UtcNow}
+ Write-A3WorkflowLog -Logger $logger -Level Info -Message 'Framework initialized.' -Module Core -Data @{ProjectRoot=$context.ProjectRoot;ConfigurationPath=$context.ConfigurationPath;SchemaVersion=$loaded.Values.schema_version}
+ return $context
+}
