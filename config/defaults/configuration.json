@@ -67,6 +67,12 @@
     }
   },
   "testing": {
+    "sqfvm": {
+      "enabled": true,
+      "files": [],
+      "config_files": [],
+      "max_runtime_ms": 0
+    },
     "automated": {
       "enabled": true
     },
