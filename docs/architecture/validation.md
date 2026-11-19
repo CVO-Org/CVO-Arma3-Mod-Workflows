@@ -53,7 +53,7 @@ The initial manifest is intentionally explicit rather than an automatic source s
 
 ## Initial package validation scope
 
-The first package validator is `Validation.Package`. Projects explicitly list PBO artifacts in `validation.package.artifacts`, either as project-relative path strings or objects containing a `path` and optional `required_entries`. The validator checks path safety, existence, the `.pbo` extension, header termination, entry metadata, data-section bounds, and optional checksum trailer length. It can also verify that named entries such as `config.cpp` or `stringtable.xml` are present.
+The first package validator is `Validation.Package`. Projects explicitly list PBO artifacts in `validation.package.artifacts`, either as project-relative path strings or objects containing a `path` and optional `required_entries`. The validator checks path safety, existence, the `.pbo` extension, header termination, entry metadata, data-section bounds, and optional 5-byte legacy checksum or 21-byte Arma signature record length. It can also verify that named entries such as `config.cpp` or `stringtable.xml` are present.
 
 This is structural inspection only: it does not extract PBO contents, decrypt encrypted packages, decompress individual entries, verify signatures or checksums cryptographically, or establish that the package will load correctly in Arma 3. The module never invokes HEMTT or modifies the artifact. An empty manifest is reported as skipped, not passed. The configured severity applies to artifact and required-entry findings.
 
