@@ -12,7 +12,7 @@ on:
         description: HEMTT version passed to arma-actions/hemtt
         required: false
         type: string
-        default: v1.22.0
+        default: v1.21.0
       project-root:
         description: Project root relative to the caller repository workspace
         required: false
