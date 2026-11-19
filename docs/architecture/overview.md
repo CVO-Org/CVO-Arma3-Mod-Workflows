@@ -9,7 +9,7 @@ Arma 3 Mod Workflows supplies shared engineering infrastructure to multiple inde
 The framework has two complementary delivery mechanisms:
 
 1. **Git submodule:** distributes local PowerShell modules, schemas, helper scripts, and documentation. A consuming project pins the submodule to a known tag or commit.
-2. **Reusable GitHub Actions:** centralizes CI and release workflow logic. Consumers reference a tagged workflow revision or immutable commit SHA.
+2. **Reusable GitHub Actions:** centralizes CI and release workflow logic. Callable workflow files are stored directly in `.github/workflows/` (GitHub does not support subdirectories there). Consumers reference a tagged workflow revision or immutable commit SHA.
 
 These mechanisms are versioned together but can be adopted independently where a project only needs one of them.
 
