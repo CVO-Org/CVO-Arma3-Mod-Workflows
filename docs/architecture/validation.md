@@ -24,13 +24,19 @@ The configuration already reserves these categories under `validation`:
 | --- | --- | --- |
 | `sqf` | SQF source analysis beyond HEMTT's configured lint checks | Evaluate additional analyzers only where they provide distinct coverage; do not assume SQF-VM is a static linter |
 | `config` | Config-specific structural and reference checks not covered by HEMTT | Framework checks and optional parsers |
-| `assets` | Missing or incorrectly referenced project assets | Framework checks |
+| `assets` | Missing or incorrectly referenced project assets | Framework checks; initial implementation validates an explicit project-relative reference manifest |
 | `dependencies` | Declared addon/mod dependency consistency | Framework checks |
 | `package` | Inspection of an existing build/package artifact | Framework checks and format-aware tools |
 
 Each category can be disabled independently. The existing `severity` setting controls whether a finding is treated as an error or warning. A category disabled by configuration is not a passing check; it is reported as skipped or omitted with an explicit reason.
 
 The initial implementation should be incremental. A category must not claim coverage until its checks and fixtures exist. Tool-backed checks must detect the executable and version before execution, use configured timeouts, capture stdout/stderr, and return structured failures. Tools are never downloaded or installed automatically.
+
+## Initial asset validation scope
+
+The first framework-owned validator is `Validation.Assets`. It checks the explicit list in `validation.assets.references` against files inside the consuming project root. References must be project-relative; absolute paths and paths that escape the project root are rejected. This avoids guessing which strings in SQF/config files are file references and avoids false positives for Arma engine paths such as `\\a3\\...`.
+
+The initial manifest is intentionally explicit rather than an automatic source scanner. Projects should add only local assets that are expected to exist in their repository. Engine-provided assets and runtime-generated files should not be listed. Empty manifests are reported as skipped, not passed, so a project cannot mistake an unconfigured check for coverage. The configured severity determines whether a missing reference is an error or warning.
 
 ## Normalized finding contract
 
