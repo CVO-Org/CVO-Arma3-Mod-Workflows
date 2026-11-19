@@ -39,7 +39,7 @@ Consuming projects may place the submodule wherever convenient and may keep thei
 
 ## Getting started
 
-Reusable workflow files live directly in `.github/workflows/`, as required by GitHub Actions; the separate top-level `workflows/` directory is intentionally not used for callable workflow definitions. The framework is under active development. The configuration contract and module interfaces are being established first. Installation instructions and executable commands will be added as those components become available.
+Reusable workflow files live directly in `.github/workflows/`, as required by GitHub Actions; the separate top-level `workflows/` directory is intentionally not used for callable workflow definitions. The framework is under active development. The PowerShell module and command-line entry point are available for initialization and module execution; capability modules are being implemented incrementally.
 
 A consuming project will eventually add the framework as a Git submodule, pin it to a release tag, and provide an `arma3-workflows.yml` file at its repository root (or pass an explicit configuration path).
 
@@ -49,6 +49,6 @@ See [the architecture overview](docs/architecture/overview.md) and [configuratio
 
 ## Development status
 
-The initial PowerShell module is available under `src/Arma3ModWorkflows.psd1`, with core implementation under `src/Core/`. It supports JSON configuration out of the box; YAML requires the optional `powershell-yaml` module. Runtime configuration validation is driven by `config/schema/arma3-workflows.schema.json` and implements the keywords currently used by that schema. Run the core tests locally with `./tests/Invoke-Tests.ps1` from PowerShell 7, or use the Windows CI workflow. The module registry currently requires explicit registration; module discovery and a unified CLI are still planned.
+The PowerShell module is available under `src/Arma3ModWorkflows.psd1`; the CLI entry point is `src/Invoke-Arma3ModWorkflows.ps1`. It supports JSON configuration out of the box; YAML requires the optional `powershell-yaml` module. Runtime configuration validation is driven by `config/schema/arma3-workflows.schema.json`. Framework modules are discovered from `src/Modules` and enabled through the `modules` configuration section. Run core tests locally with `./tests/Invoke-Tests.ps1` from PowerShell 7, or use the Windows CI workflow. Build, validation, testing, and release capability modules are still under development.
 
 See [core usage](docs/development/core-usage.md) and [CHANGELOG.md](CHANGELOG.md) for current capabilities and milestones. This repository does not provide project templates or require consuming projects to adopt a common directory structure.
