@@ -77,6 +77,8 @@ The callable `.github/workflows/test.yml` workflow checks out the consuming proj
 - **CI:** reusable GitHub Actions workflows, initially targeting Windows runners where tool compatibility requires it.
 - **In-game:** test execution remains developer-operated initially. The framework can standardize test scenarios, logging, and result collection, but does not assume a hosted CI runner can launch and interact with a normal Arma 3 client.
 
+See [release workflow architecture](release.md) for the reusable workflow's job graph, artifact integrity checks, Steam runner requirements, permissions, and recovery procedure.
+
 ## Release consistency
 
 The callable `.github/workflows/release.yml` workflow validates that an existing semantic-version tag points to the triggering commit, builds HEMTT release output once, and uploads one immutable artifact for all enabled destinations. It creates a GitHub Release draft, optionally updates an existing Arma 3 Workshop item through PublisherCmd on a dedicated authenticated Windows self-hosted runner, and publishes the GitHub Release only after all enabled destinations succeed.
