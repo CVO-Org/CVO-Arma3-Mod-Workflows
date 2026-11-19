@@ -210,7 +210,7 @@ function Invoke-A3WorkflowExternalProcess {
         foreach ($directory in $artifactDirectories) {
             if (Test-Path -LiteralPath $directory -PathType Container) {
                 Get-ChildItem -LiteralPath $directory -File -Recurse -Force | ForEach-Object {
-                    $artifactSnapshot[$_.FullName] = "$($_.Length):$($_.LastWriteTimeUtc.Ticks)"
+                    $artifactSnapshot[$_.FullName] = "$($_.Length):$($_.LastWriteTimeUtc.Ticks):$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash)"
                 }
             }
         }
@@ -322,7 +322,7 @@ function Invoke-A3WorkflowExternalProcess {
         foreach ($directory in $artifactDirectories) {
             if (Test-Path -LiteralPath $directory -PathType Container) {
                 Get-ChildItem -LiteralPath $directory -File -Force -Recurse | ForEach-Object {
-                    $signature = "$($_.Length):$($_.LastWriteTimeUtc.Ticks)"
+                    $signature = "$($_.Length):$($_.LastWriteTimeUtc.Ticks):$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash)"
                     if (-not $artifactSnapshot.ContainsKey($_.FullName) -or $artifactSnapshot[$_.FullName] -ne $signature) {
                         $artifacts += $_.FullName
                     }
