@@ -71,7 +71,7 @@ A finding with severity `error` makes its module result `Failed`; a warning-only
 
 ## Configuration and compatibility
 
-The current configuration schema already defines the validation categories and optional `sqfvm` and `sqflint` tool entries. SQF-VM is an SQF virtual machine intended for execution and unit-testing scenarios, not a drop-in static linter; its supported Arma command coverage must be considered before using it to validate production scripts. SQFLint describes itself as a basic SQF syntax checker and has a Java runtime requirement. SQFLint's documented CLI supports one file per invocation, JSON diagnostics (`-j`), and process error exit codes (`-oc`); its upstream README states a JRE 1.8 requirement. The CLI does not expose a documented version query, so the framework must not claim version verification for it. SQF-VM remains a separate execution/testing tool rather than a drop-in static linter. Tool paths may be configured explicitly or resolved from `PATH`; relative paths resolve against the consuming project root.
+The `Validation.SQF` module uses SQF-VM in automated parse-only mode. It preprocesses and parses explicitly listed `.sqf` files without executing them. SQF-VM is a custom implementation of SQF and supports a subset of Arma's scripting commands; unsupported engine commands and runtime behavior require test harnesses or in-game verification. The adapter captures process output, exit codes, and timeouts, and deliberately does not claim Arma runtime compatibility. Tool paths may be configured explicitly or resolved from `PATH`; relative paths resolve against the consuming project root. Version pinning is not currently enforced because a stable machine-readable version-query contract has not been established.
 
 The framework targets Windows PowerShell 5.1 and PowerShell 7. New validation code must remain compatible with both. Tests should use mock executables and temporary project trees; CI must not require Arma 3 or install proprietary game content.
 
@@ -79,7 +79,7 @@ The framework targets Windows PowerShell 5.1 and PowerShell 7. New validation co
 
 - [HEMTT check command](https://hemtt.dev/commands/check.html) — check behavior and lint-related options.
 - [SQF-VM source repository](https://github.com/SQFvm/runtime) — virtual-machine scope and current project documentation.
-- [SQFLint source repository](https://github.com/SkaceKamen/sqflint) — basic SQF syntax-checking scope and runtime requirements.
+- [SQF-VM source repository](https://github.com/SQFvm/runtime) — supported SQF runtime subset and command-line usage.
 
 ## Non-goals
 
