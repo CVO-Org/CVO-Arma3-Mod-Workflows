@@ -15,6 +15,7 @@ The project follows Semantic Versioning once the first stable release is publish
 - Initial `Validation.Config` module for explicit required config class declarations, with comment/string filtering, path-safety checks, severity handling, and structured findings.
 - Initial `Validation.Dependencies` module for `CfgPatches` addon declarations, literal `requiredAddons[]` references, duplicate detection, and explicit internal-addon consistency checks.
 - Initial `Validation.SQF` adapter for SQF-VM automated parse-only validation, with explicit source manifests, process output capture, timeouts, and optional-tool handling.
+- Initial `Testing.SQFVM` module for explicit SQF test-script execution in isolated processes, optional config inputs, runtime/process timeouts, output capture, and exit-code-based pass/fail reporting.
 - Pester unit and integration coverage for core behavior and HEMTT process execution, failure handling, and artifact reporting.
 - Windows CI coverage for PowerShell 7 and a dedicated Windows PowerShell 5.1 HEMTT compatibility smoke test.
 - Core, HEMTT, and validation architecture documentation.
