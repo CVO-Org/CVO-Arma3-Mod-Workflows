@@ -1,23 +1,23 @@
 # Core usage
 
-The initial core targets Windows PowerShell 5.1.
+The initial core targets Windows PowerShell 5.1 and PowerShell 7.
 
 ## Configuration
 
-The default configuration filename is arma3-workflows.yml. YAML parsing requires the optional powershell-yaml module:
+The default configuration filename is `arma3-workflows.yml`. YAML parsing requires the optional `powershell-yaml` module:
 
     Install-Module powershell-yaml -Scope CurrentUser
 
-JSON is also supported without an additional parser. Use arma3-workflows.json or pass an explicit path with ConfigPath. Framework defaults from config/defaults/configuration.json are recursively merged with project values; project settings take precedence.
+JSON is also supported without an additional parser. Use `arma3-workflows.json` or pass an explicit path with `ConfigPath`. Framework defaults from `config/defaults/configuration.json` are recursively merged with project values; project settings take precedence.
 
-The initial runtime checks schema_version, known top-level properties, and core value types. The JSON Schema remains the canonical machine-readable contract; full JSON Schema evaluation will be added to CI.
+Configuration is validated against `config/schema/arma3-workflows.schema.json` during initialization. The runtime validator supports the schema keywords currently used by this repository: `$ref` (local references), `type`, `const`, `enum`, `required`, `properties`, `additionalProperties`, `minLength`, `pattern`, and `items`. When extending the schema, add corresponding validator support and tests before relying on a new keyword. JSON Schema's `default` annotation is descriptive; defaults are applied by the framework defaults file and recursive merge, not by schema evaluation.
 
 ## Initialize
 
-    . .\path\to\Arma3-Mod-Workflows\src\Core\Initialize.ps1
+    Import-Module .\src\Arma3ModWorkflows.psd1 -Force
     $context = Initialize-A3Workflow -ProjectRoot (Get-Location).Path -EnableConsoleLog
 
-The PowerShell module manifest exports the public core functions. The returned context contains the project root, framework root, merged configuration, logger, and module registry.
+The returned context contains the project root, framework root, merged configuration, logger, module registry, and initialization timestamp.
 
 ## Register and run a module
 
@@ -28,11 +28,12 @@ The PowerShell module manifest exports the public core functions. The returned c
     }
     $results = Invoke-A3WorkflowModules -Registry $context.Registry -Context $context -Operation Run
 
-Modules execute in dependency order. Missing dependencies and circular dependencies are preflight errors. Module exceptions are converted into failed results.
+Modules execute in dependency order. Missing dependencies and circular dependencies are preflight errors. Module exceptions are converted into failed results; dependent modules are skipped when a dependency fails or is skipped. Results use the statuses `Passed`, `Warning`, `Failed`, and `Skipped`.
 
 ## Current limitations
 
-- Full JSON Schema evaluation is not yet embedded in the Windows PowerShell 5.1 runtime.
-- YAML requires powershell-yaml; JSON does not.
+- YAML requires `powershell-yaml`; JSON does not.
+- The module registry currently uses explicit registration. File-based module discovery and config-driven module activation are not yet implemented.
 - No build, validation, testing, or release capability modules are registered yet.
-- Module registration is explicit; automatic discovery will follow after the contract is tested.
+- A unified public command-line entry point is not yet implemented; the current public interface is the exported PowerShell module functions.
+- The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
