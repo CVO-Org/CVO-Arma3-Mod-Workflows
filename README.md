@@ -53,6 +53,6 @@ The PowerShell module is available under `src/Arma3ModWorkflows.psd1`; the CLI e
 
 The `Build.HEMTT` module supports HEMTT detection, version pinning, project configuration checks, check/dev/build/release operations, process timeouts, and artifact reporting. HEMTT remains an external dependency. Initial validation modules cover explicit asset references, config class contracts, addon dependencies, and SQF parsing through SQF-VM in automated parse-only mode. SQF-VM remains an external dependency; parse success does not establish Arma 3 runtime compatibility. Core CI tests run under PowerShell 7, with a separate Windows PowerShell 5.1 compatibility smoke test covering HEMTT and SQF-VM adapters.
 
-Package validation, SQF-VM runtime/unit-test orchestration, reusable workflow orchestration, and release publication modules remain under development.
+Package validation, reusable workflow orchestration, and release publication modules remain under development. Initial SQF-VM runtime test execution is available through `Testing.SQFVM`, using an explicit test-script manifest and process exit codes; this does not replace in-game testing.
 
 See [core usage](docs/development/core-usage.md) and [CHANGELOG.md](CHANGELOG.md) for current capabilities and milestones. This repository does not provide project templates or require consuming projects to adopt a common directory structure.
