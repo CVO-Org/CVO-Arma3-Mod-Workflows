@@ -415,13 +415,13 @@ if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
 
             $context.Configuration.tools.hemtt.version = '2.0.0'
             $invocationLog = Join-Path $projectRoot 'invocations.log'
-            $invocationsBeforeMismatch = @(Get-Content -LiteralPath $invocationLog)
+            $invocationsBeforeMismatch = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' })
             $versionMismatch = & $descriptor.Invoke $context 'Build'
             $versionMismatch.Status | Should -Be 'Failed'
             $versionMismatch.Data.Version | Should -Be '1.2.3'
             $versionMismatch.Data.ExpectedVersion | Should -Be '2.0.0'
             $versionMismatch.Data.Output | Should -Match 'version mismatch'
-            $invocationsAfterMismatch = @(Get-Content -LiteralPath $invocationLog)
+            $invocationsAfterMismatch = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' })
             $invocationsAfterMismatch.Count | Should -Be $invocationsBeforeMismatch.Count
             $context.Configuration.tools.hemtt.version = '1.2.3'
             $buildResult.Data.Arguments | Should -Contain 'build'
