@@ -1,6 +1,6 @@
 function Initialize-A3Workflow {
  [CmdletBinding()]
- param([Parameter(Mandatory=$true)][string]$ProjectRoot,[string]$ConfigPath,[string]$FrameworkRoot=(Split-Path -Parent $PSScriptRoot),[switch]$EnableConsoleLog)
+ param([Parameter(Mandatory=$true)][string]$ProjectRoot,[string]$ConfigPath,[string]$FrameworkRoot=(Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,[switch]$EnableConsoleLog)
  foreach($file in @('Logging.ps1','Configuration.ps1','ModuleManager.ps1')){$component=Join-Path $PSScriptRoot $file;if(-not(Test-Path -LiteralPath $component -PathType Leaf)){throw "Missing core component: $component"};. $component}
  $loaded=Get-A3WorkflowConfiguration -ProjectRoot $ProjectRoot -ConfigPath $ConfigPath
  $reportDir='.arma3-workflows/reports';if($loaded.Values.paths -is [hashtable] -and $loaded.Values.paths.report_output){$reportDir=[string]$loaded.Values.paths.report_output}
