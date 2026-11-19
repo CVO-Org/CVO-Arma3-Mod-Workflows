@@ -31,13 +31,16 @@ function Invoke-A3WorkflowModules {
  [CmdletBinding()]
  param([Parameter(Mandatory=$true)]$Registry,[Parameter(Mandatory=$true)]$Context,[string]$Operation='Run',[string[]]$ModuleIds)
  if(-not $ModuleIds){$ModuleIds=@($Registry.Modules.Keys)}
- $results=New-Object System.Collections.Generic.List[object];$modules=Resolve-A3WorkflowModuleOrder -Registry $Registry -ModuleIds $ModuleIds
+ $results=New-Object System.Collections.Generic.List[object];$moduleStatuses=@{};$modules=Resolve-A3WorkflowModuleOrder -Registry $Registry -ModuleIds $ModuleIds
  foreach($module in $modules){
-  if($Operation -notin $module.Operations){$results.Add((New-A3WorkflowModuleResult -Module $module.Id -Operation $Operation -Status Skipped -Summary "Operation '$Operation' is unsupported."));continue}
+  $failedDependency=$null
+  foreach($dependency in $module.DependsOn){if($moduleStatuses[$dependency] -in @('Failed','Skipped')){$failedDependency=$dependency;break}}
+  if($failedDependency){$moduleStatuses[$module.Id]='Skipped';$results.Add((New-A3WorkflowModuleResult -Module $module.Id -Operation $Operation -Status Skipped -Summary "Dependency '$failedDependency' did not complete successfully."));continue}
+  if($Operation -notin $module.Operations){$moduleStatuses[$module.Id]='Skipped';$results.Add((New-A3WorkflowModuleResult -Module $module.Id -Operation $Operation -Status Skipped -Summary "Operation '$Operation' is unsupported."));continue}
   $started=[DateTime]::UtcNow
   try{$data=& $module.Invoke $Context $Operation;$elapsed=[long]([DateTime]::UtcNow-$started).TotalMilliseconds
-   if($data -and $data.PSObject.Properties['Status']){$results.Add($data)}else{$results.Add((New-A3WorkflowModuleResult -Module $module.Id -Operation $Operation -Status Passed -Summary 'Module completed.' -StartedAt $started -DurationMs $elapsed -Data $data))}
-  }catch{$elapsed=[long]([DateTime]::UtcNow-$started).TotalMilliseconds;$diagnostic=[pscustomobject]@{Message=$_.Exception.Message;Category=$_.CategoryInfo.Category.ToString()};$results.Add((New-A3WorkflowModuleResult -Module $module.Id -Operation $Operation -Status Failed -Summary 'Module execution failed.' -Errors @($diagnostic) -StartedAt $started -DurationMs $elapsed));if($Context.Logger){Write-A3WorkflowLog -Logger $Context.Logger -Level Error -Module $module.Id -Message $_.Exception.Message}}
+   if($data -and $data.PSObject.Properties['Status']){$moduleStatuses[$module.Id]=$data.Status;$results.Add($data)}else{$moduleStatuses[$module.Id]='Passed';$results.Add((New-A3WorkflowModuleResult -Module $module.Id -Operation $Operation -Status Passed -Summary 'Module completed.' -StartedAt $started -DurationMs $elapsed -Data $data))}
+  }catch{$elapsed=[long]([DateTime]::UtcNow-$started).TotalMilliseconds;$diagnostic=[pscustomobject]@{Message=$_.Exception.Message;Category=$_.CategoryInfo.Category.ToString()};$moduleStatuses[$module.Id]='Failed';$results.Add((New-A3WorkflowModuleResult -Module $module.Id -Operation $Operation -Status Failed -Summary 'Module execution failed.' -Errors @($diagnostic) -StartedAt $started -DurationMs $elapsed));if($Context.Logger){Write-A3WorkflowLog -Logger $Context.Logger -Level Error -Module $module.Id -Message $_.Exception.Message}}
  }
  return ,@($results.ToArray())
 }
