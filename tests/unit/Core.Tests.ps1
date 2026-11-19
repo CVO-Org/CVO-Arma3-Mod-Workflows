@@ -46,3 +46,13 @@ Describe 'Arma3 Mod Workflows core' {
         $result[0].Status | Should -Be 'Passed'
     }
 }
+
+    It 'skips dependent modules after a dependency fails' {
+        $registry = New-A3WorkflowModuleRegistry
+        Register-A3WorkflowModule -Registry $registry -Id 'Core.Broken' -Invoke { throw 'intentional failure' }
+        Register-A3WorkflowModule -Registry $registry -Id 'Feature.Dependent' -DependsOn @('Core.Broken') -Invoke { throw 'must not execute' }
+        $context = [pscustomobject]@{ Logger = $null }
+        $results = Invoke-A3WorkflowModules -Registry $registry -Context $context
+        ($results | Where-Object Module -eq 'Core.Broken').Status | Should -Be 'Failed'
+        ($results | Where-Object Module -eq 'Feature.Dependent').Status | Should -Be 'Skipped'
+    }
