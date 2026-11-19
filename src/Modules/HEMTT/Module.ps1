@@ -283,7 +283,11 @@ function Invoke-A3WorkflowExternalProcess {
                     if (-not $version) {
                         $exitCode = 1
                         $versionMismatch = $true
-                        $outputText = "Unable to determine HEMTT version; configured version requirement is $expectedVersion."
+                        # Preserve a more specific process-failure diagnostic when the
+                        # version probe already returned a nonzero exit code.
+                        if ([string]::IsNullOrWhiteSpace($outputText)) {
+                            $outputText = "Unable to determine HEMTT version; configured version requirement is $expectedVersion."
+                        }
                     }
                     elseif ($version -ne $expectedVersion) {
                         $exitCode = 1
