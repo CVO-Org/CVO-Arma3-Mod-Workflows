@@ -231,7 +231,8 @@ Example caller workflow (replace the framework SHA and Workshop ID):
 
 Required setup:
 
-- Create a fine-grained personal access token with **Contents: read** access to the private framework repository. Store it in the consuming repository as `FRAMEWORK_READ_TOKEN` and pass it as `secrets.framework_token` to each reusable workflow. The token is used only to check out the private framework source; checkout credentials are not persisted.
+- In the framework repository, configure **Settings → Actions → General → Access** to allow the consuming repositories to use its reusable workflows.
+- Create a fine-grained personal access token with **Contents: read** access to the private framework repository. Store it in each consuming repository as `FRAMEWORK_READ_TOKEN` and pass it as `secrets.framework_token` to each reusable workflow. The token is used only to check out the private framework source; checkout credentials are not persisted.
 - For Steam publishing, use a dedicated Windows self-hosted runner labelled `self-hosted`, `Windows`, `X64`, and `arma3-publisher`. Install Arma 3 Tools and set `publisher-path` to its `PublisherCmd.exe`.
 - Run the runner under the Windows account that owns the authenticated, online Steam client session. PublisherCmd communicates through the Steam client; do not put Steam passwords or Steam Guard codes in workflow YAML or repository secrets.
 - The Workshop item must already exist and be owned/managed by the authenticated Steam account. Supply its numeric ID and a non-empty change note. This workflow updates an existing item; it does not create a new Workshop item or edit its title, description, preview, tags, or visibility.
