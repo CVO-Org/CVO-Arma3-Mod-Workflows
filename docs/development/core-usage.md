@@ -163,3 +163,39 @@ The initial implementation reads literal `CfgPatches` declarations. It does not 
 Run it with:
 
     ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Validate -Module Validation.Dependencies
+
+
+## SQF syntax validation module
+
+The framework discovers `Validation.SQF` when `modules.validation.enabled` is true. It uses SQFLint to inspect explicitly configured `.sqf` files and normalize its JSON diagnostics. SQFLint is an external optional dependency; it is not installed automatically.
+
+Configure the files to inspect and the tool location:
+
+    {
+      "schema_version": 1,
+      "validation": {
+        "sqf": {
+          "enabled": true,
+          "severity": "error",
+          "files": [
+            "addons/example/functions/fn_init.sqf",
+            "addons/example/functions/fn_update.sqf"
+          ]
+        }
+      },
+      "tools": {
+        "sqflint": {
+          "path": "tools/sqflint.jar",
+          "required": false,
+          "timeout_seconds": 60
+        }
+      }
+    }
+
+The manifest avoids assuming a particular source directory layout. Paths must be project-relative, remain inside the project root, exist, and use the `.sqf` extension. SQFLint is invoked once per file because its CLI accepts one source file per process. A JAR path is launched with `java -jar`; Java must be available on `PATH`. An executable path can be used directly, or `sqflint` can be resolved from `PATH`.
+
+The adapter requests JSON diagnostics and a nonzero error exit code. The configured `severity` controls whether findings fail validation or are reported as warnings. `tools.sqflint.arguments` appends additional CLI options. Set `tools.sqflint.required` to `true` to fail when the tool is unavailable; otherwise the module is skipped. The upstream CLI does not document a version query, so `tools.sqflint.version` is rejected rather than silently accepted as an unverified pin. SQFLint provides basic syntax/static diagnostics only; it does not execute code in Arma 3 or guarantee runtime correctness.
+
+Run it with:
+
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Validate -Module Validation.SQF
