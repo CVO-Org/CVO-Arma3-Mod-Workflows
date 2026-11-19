@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: SkippieDippie/Arma3-Mod-Workflows
-          ref: ${{ inputs.framework-ref }}
+          ref: ${{ inputs['framework-ref'] }}
           path: .arma3-workflows
           persist-credentials: false
 
@@ -61,11 +61,11 @@ jobs:
         shell: pwsh
         env:
           FRAMEWORK_SCRIPT: ${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
-          PROJECT_ROOT: ${{ inputs.project-root }}
-          CONFIG_PATH: ${{ inputs.config-path }}
+          PROJECT_ROOT: ${{ inputs['project-root'] }}
+          CONFIG_PATH: ${{ inputs['config-path'] }}
           MODULES: ${{ inputs.modules }}
-          FAIL_ON_WARNING: ${{ inputs.fail-on-warning }}
-          FAIL_ON_SKIPPED: ${{ inputs.fail-on-skipped }}
+          FAIL_ON_WARNING: ${{ inputs['fail-on-warning'] }}
+          FAIL_ON_SKIPPED: ${{ inputs['fail-on-skipped'] }}
         run: |
           $allowed = @(
             'Validation.Assets',
