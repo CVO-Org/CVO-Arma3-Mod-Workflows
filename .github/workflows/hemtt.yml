@@ -85,18 +85,18 @@ jobs:
             throw "Unsupported HEMTT operation '$env:OPERATION'. Allowed operations: $($allowed -join ', ')."
           }
 
-          $arguments = @(
-            '-ProjectRoot', $env:PROJECT_ROOT,
-            '-Operation', $env:OPERATION
-          )
+          $scriptArguments = @{
+            ProjectRoot = $env:PROJECT_ROOT
+            Operation = $env:OPERATION
+          }
           if (-not [string]::IsNullOrWhiteSpace($env:CONFIG_PATH)) {
-            $arguments += @('-ConfigPath', $env:CONFIG_PATH)
+            $scriptArguments.ConfigPath = $env:CONFIG_PATH
           }
           if ($env:FAIL_ON_WARNING -eq 'true') {
-            $arguments += '-FailOnWarning'
+            $scriptArguments.FailOnWarning = $true
           }
 
-          & $env:FRAMEWORK_SCRIPT @arguments
+          & $env:FRAMEWORK_SCRIPT @scriptArguments
 
       - name: Upload development build
         if: ${{ inputs.operation == 'Dev' }}
