@@ -162,31 +162,44 @@ function Invoke-A3WorkflowExternalProcess {
             }
         }
 
-        $previousLocation = Get-Location
-        $outputLines = @()
-        $versionOutputLines = @()
         $exitCode = 1
         $versionExitCode = 0
         $version = $null
         $versionOutputText = ''
         $outputText = ''
         $versionMismatch = $false
+        $timedOut = $false
+        $timeoutSeconds = 600
+        $processDurationMs = 0
+        $standardOutput = ''
+        $standardError = ''
+        if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.timeout_seconds) {
+            $timeoutSeconds = [int]$toolConfiguration.timeout_seconds
+        }
+        if ($timeoutSeconds -lt 1) {
+            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT timeout_seconds must be at least 1.' -Errors @(@{ Message = 'Invalid process timeout.'; Value = $timeoutSeconds }) -StartedAt $started)
+        }
+
         try {
-            Set-Location -LiteralPath $projectRoot
             if ($Operation -ne 'Detect') {
-                $versionOutputLines = @(& $executable --version 2>&1 | ForEach-Object { [string]$_ })
-                $versionExitCode = $LASTEXITCODE
-                if ($null -eq $versionExitCode) { $versionExitCode = 0 }
-                $versionOutputText = $versionOutputLines -join [Environment]::NewLine
+                $versionProcess = Invoke-A3WorkflowExternalProcess -FilePath $executable -Arguments @('--version') -TimeoutSeconds $timeoutSeconds -WorkingDirectory $projectRoot
+                $versionExitCode = $versionProcess.ExitCode
+                $processDurationMs += $versionProcess.DurationMs
+                $versionOutputText = ($versionProcess.StdOut + [Environment]::NewLine + $versionProcess.StdErr).Trim()
+                if ($versionProcess.TimedOut) {
+                    $timedOut = $true
+                    $exitCode = 124
+                    $outputText = 'HEMTT version query timed out.'
+                }
                 if ($versionOutputText -match '(?i)(?:HEMTT\s+)?v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
                     $version = $Matches[1]
                 }
 
-                if ($versionExitCode -ne 0) {
+                if (-not $timedOut -and $versionExitCode -ne 0) {
                     $exitCode = $versionExitCode
                     $outputText = 'HEMTT version query failed.' + [Environment]::NewLine + $versionOutputText
                 }
-                elseif ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.version) {
+                elseif (-not $timedOut -and $toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.version) {
                     $expectedVersion = ([string]$toolConfiguration.version).TrimStart('v')
                     if (-not $version) {
                         $exitCode = 1
@@ -201,11 +214,14 @@ function Invoke-A3WorkflowExternalProcess {
                 }
             }
 
-            if ($Operation -eq 'Detect' -or ($versionExitCode -eq 0 -and -not $versionMismatch)) {
-                $outputLines = @(& $executable @commandArguments 2>&1 | ForEach-Object { [string]$_ })
-                $exitCode = $LASTEXITCODE
-                if ($null -eq $exitCode) { $exitCode = 0 }
-                $outputText = $outputLines -join [Environment]::NewLine
+            if ($Operation -eq 'Detect' -or ($versionExitCode -eq 0 -and -not $versionMismatch -and -not $timedOut)) {
+                $processResult = Invoke-A3WorkflowExternalProcess -FilePath $executable -Arguments $commandArguments -TimeoutSeconds $timeoutSeconds -WorkingDirectory $projectRoot
+                $exitCode = $processResult.ExitCode
+                $standardOutput = $processResult.StdOut
+                $standardError = $processResult.StdErr
+                $timedOut = $processResult.TimedOut
+                $processDurationMs += $processResult.DurationMs
+                $outputText = ($standardOutput + [Environment]::NewLine + $standardError).Trim()
                 if ($Operation -eq 'Detect' -and $outputText -match '(?i)(?:HEMTT\s+)?v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
                     $version = $Matches[1]
                 }
@@ -220,13 +236,11 @@ function Invoke-A3WorkflowExternalProcess {
             }
         }
         catch {
-            $outputLines += $_.Exception.Message
-            $outputText = $outputLines -join [Environment]::NewLine
+            $standardError = $_.Exception.Message
+            $outputText = $standardError
             $exitCode = 1
         }
-        finally {
-            Set-Location -LiteralPath $previousLocation
-        }
+
         $artifactDirectory = $null
         if ($artifactDirectories.Count -gt 0) { $artifactDirectory = $artifactDirectories[0] }
         $artifacts = @()
@@ -252,9 +266,18 @@ function Invoke-A3WorkflowExternalProcess {
             Arguments = $commandArguments
             ExitCode = [int]$exitCode
             Output = $outputText
+            StandardOutput = $standardOutput
+            StandardError = $standardError
+            TimedOut = $timedOut
+            TimeoutSeconds = $timeoutSeconds
+            ProcessDurationMs = $processDurationMs
             ArtifactDirectory = $artifactDirectory
             ArtifactDirectories = $artifactDirectories
             Artifacts = $artifacts
+        }
+
+        if ($timedOut) {
+            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary "HEMTT command timed out after $timeoutSeconds seconds." -Errors @(@{ Message = 'HEMTT process exceeded its configured timeout.'; Output = $outputText }) -StartedAt $started -DurationMs $elapsed -Data $data)
         }
 
         if ($exitCode -ne 0) {
