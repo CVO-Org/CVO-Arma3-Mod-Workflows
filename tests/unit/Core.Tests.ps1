@@ -342,6 +342,28 @@ Describe 'Arma3 Mod Workflows core' {
         $result.Status | Should -Be 'Skipped'
     }
 
+    It 'skips an unavailable optional HEMTT executable' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $context = [pscustomobject]@{
+            ProjectRoot = ([IO.Path]::GetTempPath())
+            Configuration = @{ paths = @{}; tools = @{ hemtt = @{ path = 'missing-hemtt.exe'; required = $false } } }
+            Logger = $null
+        }
+        $result = & $descriptor.Invoke $context 'Detect'
+        $result.Status | Should -Be 'Skipped'
+    }
+
+    It 'fails when a required HEMTT executable is unavailable' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $context = [pscustomobject]@{
+            ProjectRoot = ([IO.Path]::GetTempPath())
+            Configuration = @{ paths = @{}; tools = @{ hemtt = @{ path = 'missing-hemtt.exe'; required = $true } } }
+            Logger = $null
+        }
+        $result = & $descriptor.Invoke $context 'Detect'
+        $result.Status | Should -Be 'Failed'
+    }
+
     It 'merges project overrides over framework defaults' {
         $defaults = @{ paths = @{ build_output = '.build'; release_output = 'release' }; modules = @{ build = @{ enabled = $true } } }
         $project = @{ paths = @{ build_output = 'out' }; modules = @{ build = @{ enabled = $false } } }
