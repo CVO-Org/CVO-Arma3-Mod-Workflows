@@ -307,7 +307,8 @@ jobs:
     name: Publish to Arma 3 Steam Workshop
     needs: build
     if: ${{ inputs['publish-steam'] }}
-    permissions: {}
+    permissions:
+      contents: read
     runs-on: [self-hosted, Windows, X64, arma3-publisher]
     steps:
       - name: Download the exact release payload
