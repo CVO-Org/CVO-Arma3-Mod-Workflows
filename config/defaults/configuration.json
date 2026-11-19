@@ -63,7 +63,8 @@
     },
     "package": {
       "enabled": true,
-      "severity": "error"
+      "severity": "error",
+      "artifacts": []
     }
   },
   "testing": {
