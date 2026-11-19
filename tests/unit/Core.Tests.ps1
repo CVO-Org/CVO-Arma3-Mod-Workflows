@@ -779,4 +779,99 @@ if ($args -contains '--fail') { exit 7 }
         $merged.paths.release_output | Should -Be 'release'
         $merged.modules.build.enabled | Should -BeFalse
     }
+
+
+Describe 'Validation.Assets module' {
+    BeforeAll {
+        $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        . (Join-Path $repositoryRoot 'src/Core/ModuleManager.ps1')
+        $assetDescriptor = & (Join-Path $repositoryRoot 'src/Modules/ValidationAssets/Module.ps1')
+    }
+
+    It 'passes when every configured project-relative asset exists' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Asset Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'addons/example') -Force | Out-Null
+        'asset' | Set-Content -LiteralPath (Join-Path $projectRoot 'addons/example/model.p3d')
+        try {
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ validation = @{ assets = @{ enabled = $true; severity = 'error'; references = @('addons/example/model.p3d') } } }
+            }
+            $result = & $assetDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Passed'
+            $result.Data.CheckedCount | Should -Be 1
+            $result.Data.Findings.Count | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'fails with a structured finding when an asset reference is missing' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Asset Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ validation = @{ assets = @{ enabled = $true; severity = 'error'; references = @('addons/missing.p3d') } } }
+            }
+            $result = & $assetDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Failed'
+            $result.Errors.Count | Should -Be 1
+            $result.Errors[0].Id | Should -Be 'ASSET_NOT_FOUND'
+            $result.Errors[0].Path | Should -Be 'addons/missing.p3d'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'downgrades missing asset findings when severity is warning' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Asset Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ validation = @{ assets = @{ severity = 'warning'; references = @('missing.rvmat') } } }
+            }
+            $result = & $assetDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Warning'
+            $result.Errors.Count | Should -Be 0
+            $result.Warnings.Count | Should -Be 1
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'rejects references that escape the project root' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Asset Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ validation = @{ assets = @{ references = @('../outside.p3d') } } }
+            }
+            $result = & $assetDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Failed'
+            $result.Errors[0].Id | Should -Be 'ASSET_PATH_OUTSIDE_PROJECT'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'skips cleanly when asset validation is disabled or no references are configured' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Asset Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $disabledContext = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ assets = @{ enabled = $false } } } }
+            (& $assetDescriptor.Invoke $disabledContext 'Validate').Status | Should -Be 'Skipped'
+            $emptyContext = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ assets = @{ references = @() } } } }
+            $emptyResult = & $assetDescriptor.Invoke $emptyContext 'Validate'
+            $emptyResult.Status | Should -Be 'Skipped'
+            $emptyResult.Warnings.Count | Should -Be 1
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'validates the asset reference manifest against the configuration schema' {
+        $valid = @{ schema_version = 1; validation = @{ assets = @{ enabled = $true; severity = 'warning'; references = @('addons/example/model.p3d') } } }
+        (Test-A3WorkflowConfiguration -Configuration $valid).IsValid | Should -BeTrue
+        $invalid = @{ schema_version = 1; validation = @{ assets = @{ references = @(42) } } }
+        (Test-A3WorkflowConfiguration -Configuration $invalid).IsValid | Should -BeFalse
+    }
 }
+
