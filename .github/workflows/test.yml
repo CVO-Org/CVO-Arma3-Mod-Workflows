@@ -62,7 +62,25 @@ jobs:
             'X-GitHub-Api-Version' = '2022-11-28'
           }
           $asset = @($release.assets | Where-Object { $_.name -eq 'sqfvm_windows_x64.zip' }) | Select-Object -First 1
-          if (-not $asset -or $asset.digest -notmatch '^sha256:[A-Fa-f0-9]{64}
+          if (-not $asset) {
+            throw "SQF-VM release '$env:SQFVM_VERSION' does not contain sqfvm_windows_x64.zip."
+          }
+          if ([string]$asset.digest -notmatch '^sha256:[a-fA-F0-9]{64}$') {
+            throw "SQF-VM release '$env:SQFVM_VERSION' does not publish a valid SHA-256 digest for its Windows x64 archive."
+          }
+
+          $archive = Join-Path $env:RUNNER_TEMP 'sqfvm_windows_x64.zip'
+          $destination = Join-Path $env:RUNNER_TEMP 'sqfvm'
+          $downloadUrl = "https://github.com/SQFvm/runtime/releases/download/$($env:SQFVM_VERSION)/sqfvm_windows_x64.zip"
+
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $archive
+          $actualDigest = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash
+          $expectedDigest = ($asset.digest -split ':', 2)[1]
+          if ($actualDigest -ine $expectedDigest) {
+            throw "SQF-VM archive SHA-256 mismatch. Expected $expectedDigest, received $actualDigest."
+          }
+
+          New-Item -ItemType Directory -Path $destination -Force | Out-Null
           Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force
 
           $executable = Get-ChildItem -LiteralPath $destination -File -Recurse |
