@@ -43,14 +43,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: SkippieDippie/Arma3-Mod-Workflows
-          ref: \${{ inputs.framework-ref }}
+          ref: ${{ inputs.framework-ref }}
           path: .arma3-workflows
           persist-credentials: false
 
       - name: Install SQF-VM
         shell: pwsh
         env:
-          SQFVM_VERSION: \${{ inputs.sqfvm-version }}
+          SQFVM_VERSION: ${{ inputs.sqfvm-version }}
         run: |
           if ($env:SQFVM_VERSION -notmatch '^[A-Za-z0-9._-]+$') {
             throw "Invalid SQF-VM release tag '$env:SQFVM_VERSION'."
@@ -76,10 +76,10 @@ jobs:
       - name: Run configured SQF-VM test scripts
         shell: pwsh
         env:
-          FRAMEWORK_SCRIPT: \${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
-          PROJECT_ROOT: \${{ inputs.project-root }}
-          CONFIG_PATH: \${{ inputs.config-path }}
-          FAIL_ON_SKIPPED: \${{ inputs.fail-on-skipped }}
+          FRAMEWORK_SCRIPT: ${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
+          PROJECT_ROOT: ${{ inputs.project-root }}
+          CONFIG_PATH: ${{ inputs.config-path }}
+          FAIL_ON_SKIPPED: ${{ inputs.fail-on-skipped }}
         run: |
           $arguments = @(
             '-ProjectRoot', $env:PROJECT_ROOT,
