@@ -11,5 +11,8 @@ function Initialize-A3Workflow {
  $registry=New-A3WorkflowModuleRegistry
  $context=[pscustomobject]@{ProjectRoot=$loaded.ProjectRoot;FrameworkRoot=(Resolve-Path -LiteralPath $FrameworkRoot -ErrorAction Stop).Path;FrameworkVersion='0.1.0-dev';Configuration=$loaded.Values;ConfigurationPath=$loaded.ConfigPath;Logger=$logger;Registry=$registry;StartedAt=[DateTime]::UtcNow}
  Write-A3WorkflowLog -Logger $logger -Level Info -Message 'Framework initialized.' -Module Core -Data @{ProjectRoot=$context.ProjectRoot;ConfigurationPath=$context.ConfigurationPath;SchemaVersion=$loaded.Values.schema_version}
+ $modulesRoot=Join-Path $context.FrameworkRoot 'src/Modules'
+ $context.ModuleDiscovery=$null
+ if(Test-Path -LiteralPath $modulesRoot -PathType Container){$context.ModuleDiscovery=Import-A3WorkflowModules -Registry $registry -ModulesRoot $modulesRoot -Configuration $context.Configuration -Logger $logger}
  return $context
 }
