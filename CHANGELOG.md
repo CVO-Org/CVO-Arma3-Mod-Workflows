@@ -24,7 +24,7 @@ The project follows Semantic Versioning once the first stable release is publish
 - Reusable Windows SQF-VM runtime testing workflow with an explicit SQF-VM release input, SHA-256 archive verification, test-manifest execution, and fail-on-skipped policy.
 - Reusable release workflow that builds once, creates a GitHub Release draft, optionally updates an existing Arma 3 Workshop item through PublisherCmd, verifies release payload hashes, and publishes the GitHub Release only after all enabled destinations succeed.
 - Private-framework checkout authentication for reusable workflows through a narrowly scoped `framework-token` secret.
-- Core, HEMTT, validation, and reusable workflow usage documentation.
+- Core, HEMTT, validation, testing, and release workflow usage and architecture documentation.
 
 ### Notes
 - HEMTT is the first build capability module. Framework-owned validation includes explicit asset references, config class contracts, addon dependency checks, and SQF-VM parse-only validation. Initial SQF-VM runtime test execution and structural PBO package validation are available. Release orchestration builds once and coordinates GitHub and optional Steam publication; Steam requires a pre-authenticated self-hosted Windows runner and an existing Workshop item.
