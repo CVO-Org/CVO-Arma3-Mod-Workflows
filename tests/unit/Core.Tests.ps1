@@ -1154,101 +1154,114 @@ Describe 'Validation.SQF module' {
     BeforeAll {
         $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
         . (Join-Path $repositoryRoot 'src/Core/ModuleManager.ps1')
+        . (Join-Path $repositoryRoot 'src/Core/Configuration.ps1')
         $sqfDescriptor = & (Join-Path $repositoryRoot 'src/Modules/ValidationSQF/Module.ps1')
     }
 
-    It 'invokes a mock SQFLint executable and parses structured diagnostics' {
-        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF Validation " + [guid]::NewGuid().ToString('N'))
+    It 'invokes SQF-VM in automated parse-only mode and captures output' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF VM Validation " + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
         'systemChat "hello";' | Set-Content -LiteralPath (Join-Path $projectRoot 'valid.sqf')
-        $mockPath = Join-Path $projectRoot 'mock-sqflint.ps1'
+        $mockPath = Join-Path $projectRoot 'mock-sqfvm.ps1'
         @'
-$arguments | Out-Null
-$path = $args[-1]
-if ($path -like '*invalid.sqf') {
-    '{"type":"error","message":"Mock syntax error","line":[3,3],"column":[4,8]}'
-    exit 1
+if ($args -notcontains '--automated' -or $args -notcontains '--parse-only' -or $args -notcontains '--input-sqf') {
+    [Console]::Error.WriteLine('Expected automated parse-only SQF-VM arguments.')
+    exit 8
 }
+Write-Output 'Mock SQF-VM parse passed.'
+Write-Error 'Mock diagnostic stream'
 exit 0
 '@ | Set-Content -LiteralPath $mockPath
         try {
-            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('valid.sqf'); severity = 'error' } }; tools = @{ sqflint = @{ path = $mockPath; timeout_seconds = 10 } } } }
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('valid.sqf'); severity = 'error' } }; tools = @{ sqfvm = @{ path = $mockPath; timeout_seconds = 10 } } } }
             $result = & $sqfDescriptor.Invoke $context 'Validate'
             $result.Status | Should -Be 'Passed'
             $result.Data.CheckedCount | Should -Be 1
-            $result.Data.Processes[0].ExitCode | Should -Be 0
+            $result.Data.Tool.Name | Should -Be 'SQF-VM'
+            $result.Data.ValidationMode | Should -Be 'ParseOnly'
+            $result.Data.Processes[0].StandardOutput | Should -Match 'parse passed'
+            $result.Data.Processes[0].StandardError | Should -Match 'Mock diagnostic stream'
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'reports linter diagnostics as errors or warnings according to configured severity' {
-        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF Validation " + [guid]::NewGuid().ToString('N'))
+    It 'fails when SQF-VM returns a nonzero exit code' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF VM Validation " + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
         'invalid' | Set-Content -LiteralPath (Join-Path $projectRoot 'invalid.sqf')
-        $mockPath = Join-Path $projectRoot 'mock-sqflint.ps1'
+        $mockPath = Join-Path $projectRoot 'mock-sqfvm.ps1'
+        "@'\nWrite-Output 'Mock runtime failure.'\nexit 7\n'@ | Set-Content -LiteralPath '$mockPath'" | Out-Null
         @'
-'{"type":"error","message":"Mock syntax error","line":[3,3],"column":[4,8]}'
-exit 1
+Write-Output 'Mock SQF-VM failure.'
+[Console]::Error.WriteLine('Mock error')
+exit 7
 '@ | Set-Content -LiteralPath $mockPath
         try {
-            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('invalid.sqf'); severity = 'error' } }; tools = @{ sqflint = @{ path = $mockPath } } } }
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('invalid.sqf') } }; tools = @{ sqfvm = @{ path = $mockPath } } } }
             $result = & $sqfDescriptor.Invoke $context 'Validate'
             $result.Status | Should -Be 'Failed'
-            $result.Errors.Id | Should -Contain 'SQF_LINT_FINDING'
-
-            $context.Configuration.validation.sqf.severity = 'warning'
-            $result = & $sqfDescriptor.Invoke $context 'Validate'
-            $result.Status | Should -Be 'Warning'
-            $result.Warnings.Id | Should -Contain 'SQF_LINT_FINDING'
+            $result.Errors.Id | Should -Contain 'SQFVM_PROCESS_FAILED'
+            $result.Data.Processes[0].ExitCode | Should -Be 7
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     It 'rejects unsafe paths and reports missing source files' {
-        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF Validation " + [guid]::NewGuid().ToString('N'))
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF VM Validation " + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
-        $mockPath = Join-Path $projectRoot 'mock-sqflint.ps1'
+        $mockPath = Join-Path $projectRoot 'mock-sqfvm.ps1'
         'exit 0' | Set-Content -LiteralPath $mockPath
         try {
-            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('missing.sqf', '../outside.sqf', 'wrong.txt') } }; tools = @{ sqflint = @{ path = $mockPath } } } }
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('missing.sqf', '../outside.sqf', 'wrong.txt') } }; tools = @{ sqfvm = @{ path = $mockPath } } } }
             $result = & $sqfDescriptor.Invoke $context 'Validate'
             $result.Status | Should -Be 'Failed'
-            $result.Errors.Id | Should -Contain 'SQF_FILE_NOT_FOUND'
-            $result.Errors.Id | Should -Contain 'SQF_PATH_OUTSIDE_PROJECT'
-            $result.Errors.Id | Should -Contain 'SQF_INVALID_EXTENSION'
+            $result.Errors.Id | Should -Contain 'SQFVM_FILE_NOT_FOUND'
+            $result.Errors.Id | Should -Contain 'SQFVM_PATH_OUTSIDE_PROJECT'
+            $result.Errors.Id | Should -Contain 'SQFVM_INVALID_EXTENSION'
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     It 'skips when disabled or the tool is unavailable and fails when the tool is required' {
-        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF Validation " + [guid]::NewGuid().ToString('N'))
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF VM Validation " + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
         'systemChat "hello";' | Set-Content -LiteralPath (Join-Path $projectRoot 'valid.sqf')
         try {
             $disabled = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ enabled = $false; files = @('valid.sqf') } }; tools = @{} } }
             (& $sqfDescriptor.Invoke $disabled 'Validate').Status | Should -Be 'Skipped'
-            $optional = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('valid.sqf') } }; tools = @{ sqflint = @{ path = (Join-Path $projectRoot 'missing.exe') } } } }
+            $optional = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('valid.sqf') } }; tools = @{ sqfvm = @{ path = (Join-Path $projectRoot 'missing.exe') } } } }
             (& $sqfDescriptor.Invoke $optional 'Validate').Status | Should -Be 'Skipped'
-            $required = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('valid.sqf') } }; tools = @{ sqflint = @{ path = (Join-Path $projectRoot 'missing.exe'); required = $true } } } }
+            $required = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('valid.sqf') } }; tools = @{ sqfvm = @{ path = (Join-Path $projectRoot 'missing.exe'); required = $true } } } }
             (& $sqfDescriptor.Invoke $required 'Validate').Status | Should -Be 'Failed'
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'rejects unverified version pins and validates SQF settings against the schema' {
-        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF Validation " + [guid]::NewGuid().ToString('N'))
+    It 'reports timeout and rejects unverified version pins' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF VM Validation " + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
         'systemChat "hello";' | Set-Content -LiteralPath (Join-Path $projectRoot 'valid.sqf')
-        $mockPath = Join-Path $projectRoot 'mock-sqflint.ps1'
-        'exit 0' | Set-Content -LiteralPath $mockPath
+        $mockPath = Join-Path $projectRoot 'mock-sqfvm.ps1'
+        @'
+Start-Sleep -Seconds 5
+exit 0
+'@ | Set-Content -LiteralPath $mockPath
         try {
-            $pinned = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('valid.sqf') } }; tools = @{ sqflint = @{ path = $mockPath; version = '1.2.3' } } } }
-            (& $sqfDescriptor.Invoke $pinned 'Validate').Errors.Id | Should -Contain 'SQF_VERSION_UNVERIFIABLE'
+            $timeout = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('valid.sqf') } }; tools = @{ sqfvm = @{ path = $mockPath; timeout_seconds = 1 } } } }
+            $result = & $sqfDescriptor.Invoke $timeout 'Validate'
+            $result.Status | Should -Be 'Failed'
+            $result.Data.Processes[0].TimedOut | Should -BeTrue
+
+            $pinned = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ sqf = @{ files = @('valid.sqf') } }; tools = @{ sqfvm = @{ path = $mockPath; version = '1.2.3' } } } }
+            (& $sqfDescriptor.Invoke $pinned 'Validate').Errors.Id | Should -Contain 'SQFVM_VERSION_UNVERIFIABLE'
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
-        $valid = @{ schema_version = 1; validation = @{ sqf = @{ enabled = $true; severity = 'error'; files = @('addons/example/init.sqf') } }; tools = @{ sqflint = @{ path = 'tools/sqflint.jar'; timeout_seconds = 30; arguments = @('-cp') } } }
+    }
+
+    It 'validates SQF-VM settings against the configuration schema' {
+        $valid = @{ schema_version = 1; validation = @{ sqf = @{ enabled = $true; severity = 'error'; files = @('addons/example/init.sqf') } }; tools = @{ sqfvm = @{ path = 'tools/sqfvm.exe'; timeout_seconds = 30; arguments = @('--verbose') } } }
         (Test-A3WorkflowConfiguration -Configuration $valid).IsValid | Should -BeTrue
-        $invalid = @{ schema_version = 1; validation = @{ sqf = @{ files = @(42) } } }
+        $invalid = @{ schema_version = 1; validation = @{ sqf = @{ files = @(42) } }; tools = @{ sqfvm = @{ timeout_seconds = 'soon' } } }
         (Test-A3WorkflowConfiguration -Configuration $invalid).IsValid | Should -BeFalse
     }
 }
