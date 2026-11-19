@@ -11,6 +11,8 @@
     "hemtt": {
       "enabled": true,
       "required": false,
+      "arguments": [],
+      "check_arguments": [],
       "timeout_seconds": 600
     }
   },
