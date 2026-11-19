@@ -230,6 +230,7 @@ function Invoke-A3WorkflowExternalProcess {
         $standardOutput = ''
         $standardError = ''
         $processStartError = $null
+        $versionProbeInProgress = $false
         if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.Contains('timeout_seconds') -and $null -ne $toolConfiguration.timeout_seconds) {
             $timeoutSeconds = [int]$toolConfiguration.timeout_seconds
         }
@@ -243,7 +244,9 @@ function Invoke-A3WorkflowExternalProcess {
                 if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.arguments) {
                     $versionArguments += @($toolConfiguration.arguments)
                 }
+                $versionProbeInProgress = $true
                 $versionProcess = Invoke-A3WorkflowExternalProcess -FilePath $executable -Arguments $versionArguments -TimeoutSeconds $timeoutSeconds -WorkingDirectory $projectRoot
+                $versionProbeInProgress = $false
                 $versionExitCode = $versionProcess.ExitCode
                 $processDurationMs += $versionProcess.DurationMs
                 $versionStandardOutput = $versionProcess.StdOut
@@ -278,7 +281,9 @@ function Invoke-A3WorkflowExternalProcess {
             }
 
             if ($Operation -eq 'Detect' -or ($versionExitCode -eq 0 -and -not $versionMismatch -and -not $timedOut)) {
+                if ($Operation -eq 'Detect') { $versionProbeInProgress = $true }
                 $processResult = Invoke-A3WorkflowExternalProcess -FilePath $executable -Arguments $commandArguments -TimeoutSeconds $timeoutSeconds -WorkingDirectory $projectRoot
+                if ($Operation -eq 'Detect') { $versionProbeInProgress = $false }
                 $exitCode = $processResult.ExitCode
                 $standardOutput = $processResult.StdOut
                 $standardError = $processResult.StdErr
@@ -310,6 +315,7 @@ function Invoke-A3WorkflowExternalProcess {
             }
         }
         catch {
+            if ($versionProbeInProgress) { $versionExitCode = 1 }
             $processStartError = $_.Exception.Message
             $standardError = $processStartError
             $outputText = $standardError
