@@ -17,7 +17,7 @@ The initial runtime checks schema_version, known top-level properties, and core 
     . .\path\to\Arma3-Mod-Workflows\src\Core\Initialize.ps1
     $context = Initialize-A3Workflow -ProjectRoot (Get-Location).Path -EnableConsoleLog
 
-The returned context contains the project root, framework root, configuration, logger, and module registry.
+The PowerShell module manifest exports the public core functions. The returned context contains the project root, framework root, merged configuration, logger, and module registry.
 
 ## Register and run a module
 
