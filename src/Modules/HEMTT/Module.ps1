@@ -108,16 +108,23 @@
             }
         }
 
-        $artifactDirectory = $null
+        $artifactDirectories = @()
         switch ($Operation) {
-            'Dev' { $artifactDirectory = Join-Path $projectRoot '.hemttout/dev' }
-            'Build' { $artifactDirectory = Join-Path $projectRoot '.hemttout/build' }
-            'Release' { $artifactDirectory = Join-Path $projectRoot '.hemttout/release' }
-            'Run' { $artifactDirectory = Join-Path $projectRoot '.hemttout/build' }
+            'Dev' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/dev') }
+            'Build' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/build') }
+            'Release' {
+                $artifactDirectories += (Join-Path $projectRoot '.hemttout/release')
+                $artifactDirectories += (Join-Path $projectRoot 'releases')
+            }
+            'Run' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/build') }
         }
+        $artifactDirectory = $null
+        if ($artifactDirectories.Count -gt 0) { $artifactDirectory = $artifactDirectories[0] }
         $artifacts = @()
-        if ($artifactDirectory -and (Test-Path -LiteralPath $artifactDirectory -PathType Container)) {
-            $artifacts = @(Get-ChildItem -LiteralPath $artifactDirectory -Force | ForEach-Object { $_.FullName })
+        foreach ($directory in $artifactDirectories) {
+            if (Test-Path -LiteralPath $directory -PathType Container) {
+                $artifacts += @(Get-ChildItem -LiteralPath $directory -Force -Recurse | ForEach-Object { $_.FullName })
+            }
         }
 
         $elapsed = [long]([DateTime]::UtcNow - $started).TotalMilliseconds
@@ -128,6 +135,7 @@
             ExitCode = [int]$exitCode
             Output = $outputText
             ArtifactDirectory = $artifactDirectory
+            ArtifactDirectories = $artifactDirectories
             Artifacts = $artifacts
         }
 
