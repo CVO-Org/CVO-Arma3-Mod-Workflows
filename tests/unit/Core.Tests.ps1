@@ -383,6 +383,7 @@ Describe 'Arma3 Mod Workflows core' {
             $result = & $descriptor.Invoke $context 'Build'
             $result.Status | Should -Be 'Failed'
             $result.Data.ExitCode | Should -Be 1
+            $result.Data.VersionExitCode | Should -Be 1
             $result.Data.ProcessStartError | Should -Not -BeNullOrEmpty
             $result.Data.StandardError | Should -Not -BeNullOrEmpty
             $result.Errors.Count | Should -Be 1
