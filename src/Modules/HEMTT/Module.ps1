@@ -113,6 +113,7 @@ function Invoke-A3WorkflowExternalProcess {
 
 
         $started = [DateTime]::UtcNow
+        $durationWatch = [Diagnostics.Stopwatch]::StartNew()
         $projectRoot = [string]$Context.ProjectRoot
         $toolConfiguration = $null
         if ($Context.Configuration.tools -is [System.Collections.IDictionary] -and $Context.Configuration.tools.Contains('hemtt')) {
@@ -138,9 +139,9 @@ function Invoke-A3WorkflowExternalProcess {
             else {
                 $diagnostic = @{ Message = 'Configured HEMTT executable does not exist.'; Path = $configuredPath }
                 if ($toolConfiguration.required -eq $true) {
-                    return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary "Configured HEMTT executable was not found: $configuredPath" -Errors @($diagnostic) -StartedAt $started)
+                    return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary "Configured HEMTT executable was not found: $configuredPath" -Errors @($diagnostic) -StartedAt $started -DurationMs ([Math]::Max(1, $durationWatch.ElapsedMilliseconds)))
                 }
-                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary "Configured HEMTT executable was not found: $configuredPath" -Warnings @($diagnostic) -StartedAt $started)
+                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary "Configured HEMTT executable was not found: $configuredPath" -Warnings @($diagnostic) -StartedAt $started -DurationMs ([Math]::Max(1, $durationWatch.ElapsedMilliseconds)))
             }
         }
         else {
@@ -168,13 +169,13 @@ function Invoke-A3WorkflowExternalProcess {
                 $hemttConfig = $Context.Configuration.paths.hemtt_config
             }
             if ([string]::IsNullOrWhiteSpace([string]$hemttConfig)) {
-                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT project configuration path is not configured.' -Errors @(@{ Message = 'paths.hemtt_config must identify the HEMTT project.toml file.' }) -StartedAt $started)
+                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT project configuration path is not configured.' -Errors @(@{ Message = 'paths.hemtt_config must identify the HEMTT project.toml file.' }) -StartedAt $started -DurationMs ([Math]::Max(1, $durationWatch.ElapsedMilliseconds)))
             }
             if (-not [IO.Path]::IsPathRooted([string]$hemttConfig)) {
                 $hemttConfig = Join-Path $projectRoot ([string]$hemttConfig)
             }
             if (-not (Test-Path -LiteralPath $hemttConfig -PathType Leaf)) {
-                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary "HEMTT project configuration was not found: $hemttConfig" -Errors @(@{ Message = 'Required HEMTT project.toml file does not exist.'; Path = $hemttConfig; Remediation = 'Create .hemtt/project.toml or configure paths.hemtt_config.' }) -StartedAt $started)
+                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary "HEMTT project configuration was not found: $hemttConfig" -Errors @(@{ Message = 'Required HEMTT project.toml file does not exist.'; Path = $hemttConfig; Remediation = 'Create .hemtt/project.toml or configure paths.hemtt_config.' }) -StartedAt $started -DurationMs ([Math]::Max(1, $durationWatch.ElapsedMilliseconds)))
             }
         }
 
@@ -230,7 +231,7 @@ function Invoke-A3WorkflowExternalProcess {
             $timeoutSeconds = [int]$toolConfiguration.timeout_seconds
         }
         if ($timeoutSeconds -lt 1) {
-            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT timeout_seconds must be at least 1.' -Errors @(@{ Message = 'Invalid process timeout.'; Value = $timeoutSeconds }) -StartedAt $started)
+            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT timeout_seconds must be at least 1.' -Errors @(@{ Message = 'Invalid process timeout.'; Value = $timeoutSeconds }) -StartedAt $started -DurationMs ([Math]::Max(1, $durationWatch.ElapsedMilliseconds)))
         }
 
         try {
@@ -326,7 +327,7 @@ function Invoke-A3WorkflowExternalProcess {
             }
         }
 
-        $elapsed = [long]([DateTime]::UtcNow - $started).TotalMilliseconds
+        $elapsed = [long]([Math]::Max(1, $durationWatch.ElapsedMilliseconds))
         $data = @{
             Executable = $executable
             Version = $version
