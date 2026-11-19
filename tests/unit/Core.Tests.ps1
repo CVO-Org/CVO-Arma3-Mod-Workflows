@@ -357,6 +357,31 @@ Describe 'Arma3 Mod Workflows core' {
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'reports HEMTT process startup failures with diagnostics' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $hemttDirectory = Join-Path $projectRoot '.hemtt'
+            New-Item -ItemType Directory -Path $hemttDirectory -Force | Out-Null
+            'name = "StartupFailure"' | Set-Content -LiteralPath (Join-Path $hemttDirectory 'project.toml') -Encoding UTF8
+            $invalidExecutable = Join-Path $projectRoot 'not-an-executable.txt'
+            'This file cannot be executed.' | Set-Content -LiteralPath $invalidExecutable -Encoding UTF8
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ paths = @{ hemtt_config = '.hemtt/project.toml' }; tools = @{ hemtt = @{ path = $invalidExecutable } } }
+                Logger = $null
+            }
+
+            $result = & $descriptor.Invoke $context 'Build'
+            $result.Status | Should -Be 'Failed'
+            $result.Data.ExitCode | Should -Be 1
+            $result.Data.ProcessStartError | Should -Not -BeNullOrEmpty
+            $result.Data.StandardError | Should -Not -BeNullOrEmpty
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'skips HEMTT when explicitly disabled in tool configuration' {
         $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
         $context = [pscustomobject]@{
