@@ -183,7 +183,7 @@ The repository provides a callable Windows runtime-test workflow at `.github/wor
           framework-ref: YOUR_FRAMEWORK_REF
           sqfvm-version: v2026.04.03-ed9f5f5
 
-Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The workflow separately installs the selected SQF-VM release from its official GitHub release archive.
+Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The workflow separately installs the selected SQF-VM release from its official GitHub release archive and verifies the archive against the SHA-256 digest published by the GitHub Releases API.
 
 Inputs:
 
