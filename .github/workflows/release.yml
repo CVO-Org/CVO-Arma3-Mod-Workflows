@@ -67,13 +67,14 @@ on:
         type: boolean
         default: false
 
+    secrets:
+      framework-token:
+        description: Fine-grained token with contents:read access to the private framework repository
+        required: true
+
 permissions:
   contents: write
 
-secrets:
-  framework-token:
-    description: Fine-grained token with contents:read access to the private framework repository
-    required: true
 
 concurrency:
   group: arma3-release-${{ inputs['release-tag'] }}
