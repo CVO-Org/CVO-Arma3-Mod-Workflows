@@ -67,6 +67,62 @@ Describe 'Arma3 Mod Workflows core' {
         (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
     }
 
+    It 'discovers and registers enabled module descriptors' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        $moduleDirectory = Join-Path $root 'Build'
+        New-Item -ItemType Directory -Path $moduleDirectory -Force | Out-Null
+        try {
+            @"
+@{
+    Id = 'Build.Sample'
+    ConfigKey = 'build'
+    Operations = @('Run')
+    Invoke = { param($Context, $Operation) return @{ Executed = $true } }
+}
+"@ | Set-Content -LiteralPath (Join-Path $moduleDirectory 'Module.ps1') -Encoding UTF8
+            $registry = New-A3WorkflowModuleRegistry
+            $configuration = @{ modules = @{ build = @{ enabled = $true } } }
+            $discovery = Import-A3WorkflowModules -Registry $registry -ModulesRoot $root -Configuration $configuration
+            $discovery.Registered | Should -Contain 'Build.Sample'
+            $registry.Modules.ContainsKey('Build.Sample') | Should -BeTrue
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'does not register modules disabled by configuration' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        $moduleDirectory = Join-Path $root 'Build'
+        New-Item -ItemType Directory -Path $moduleDirectory -Force | Out-Null
+        try {
+            @"
+@{
+    Id = 'Build.Disabled'
+    ConfigKey = 'build'
+    Invoke = { param($Context, $Operation) return @{ Executed = $true } }
+}
+"@ | Set-Content -LiteralPath (Join-Path $moduleDirectory 'Module.ps1') -Encoding UTF8
+            $registry = New-A3WorkflowModuleRegistry
+            $configuration = @{ modules = @{ build = @{ enabled = $false } } }
+            $discovery = Import-A3WorkflowModules -Registry $registry -ModulesRoot $root -Configuration $configuration
+            $discovery.Registered | Should -BeEmpty
+            $discovery.Skipped[0].Id | Should -Be 'Build.Disabled'
+            $registry.Modules.ContainsKey('Build.Disabled') | Should -BeFalse
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'rejects malformed module descriptors' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        $moduleDirectory = Join-Path $root 'Broken'
+        New-Item -ItemType Directory -Path $moduleDirectory -Force | Out-Null
+        try {
+            "@{ Id = 'Broken.Module' }" | Set-Content -LiteralPath (Join-Path $moduleDirectory 'Module.ps1') -Encoding UTF8
+            $registry = New-A3WorkflowModuleRegistry
+            { Import-A3WorkflowModules -Registry $registry -ModulesRoot $root -Configuration @{} } | Should -Throw
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'orders dependencies before dependent modules' {
         $registry = New-A3WorkflowModuleRegistry
         Register-A3WorkflowModule -Registry $registry -Id 'Core.First' -Invoke { }
