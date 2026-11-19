@@ -1,3 +1,11 @@
+function Merge-A3WorkflowConfiguration {
+ [CmdletBinding()]
+ param([hashtable]$Base,[hashtable]$Override)
+ $merged=@{}
+ if($Base){foreach($key in $Base.Keys){$merged[$key]=$Base[$key]}}
+ if($Override){foreach($key in $Override.Keys){if($merged[$key] -is [hashtable] -and $Override[$key] -is [hashtable]){$merged[$key]=Merge-A3WorkflowConfiguration -Base $merged[$key] -Override $Override[$key]}else{$merged[$key]=$Override[$key]}}}
+ return ,$merged
+}
 function ConvertTo-A3WorkflowHashtable {
  [CmdletBinding()]
  param([Parameter(Mandatory=$true)]$InputObject)
