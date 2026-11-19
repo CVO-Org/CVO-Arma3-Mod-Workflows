@@ -183,6 +183,31 @@ Describe 'Arma3 Mod Workflows core' {
         Test-Path -LiteralPath (Join-Path $repositoryRoot 'src/Invoke-Arma3ModWorkflows.ps1') | Should -BeTrue
     }
 
+    It 'lists modules through the command-line entry point' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            '{"schema_version":1}' | Set-Content -LiteralPath (Join-Path $projectRoot 'arma3-workflows.json') -Encoding UTF8
+            $cli = Join-Path $repositoryRoot 'src/Invoke-Arma3ModWorkflows.ps1'
+            $output = @(& (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File $cli -ProjectRoot $projectRoot -ListModules 2>&1)
+            $LASTEXITCODE | Should -Be 0
+            ($output -join "`n") | Should -Not -Match 'Exception|Error'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'returns exit code 2 when CLI initialization fails' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            '{"schema_version":99}' | Set-Content -LiteralPath (Join-Path $projectRoot 'arma3-workflows.json') -Encoding UTF8
+            $cli = Join-Path $repositoryRoot 'src/Invoke-Arma3ModWorkflows.ps1'
+            $null = @(& (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File $cli -ProjectRoot $projectRoot 2>&1)
+            $LASTEXITCODE | Should -Be 2
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'merges project overrides over framework defaults' {
         $defaults = @{ paths = @{ build_output = '.build'; release_output = 'release' }; modules = @{ build = @{ enabled = $true } } }
         $project = @{ paths = @{ build_output = 'out' }; modules = @{ build = @{ enabled = $false } } }
