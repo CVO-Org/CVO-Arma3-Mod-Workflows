@@ -87,3 +87,8 @@ The framework targets Windows PowerShell 5.1 and PowerShell 7. New validation co
 - Automatically installing external tools.
 - Modifying source files to fix findings.
 - Treating a skipped or unavailable check as a pass.
+
+
+## SQF-VM automated test execution
+
+`Testing.SQFVM` is separate from `Validation.SQF`: it executes only the explicit `testing.sqfvm.files` manifest and never runs as part of parse-only validation. Each script gets a fresh SQF-VM process, optional config inputs are loaded before the script, and process exit status is the pass/fail contract. Test scripts must implement their assertions and set a nonzero process exit code on failure (SQF-VM's `exitcode__` command can do this). A successful process exit alone cannot prove that a script contained meaningful assertions. Process timeout and SQF-VM's optional `--max-runtime` are separate safeguards. Test scripts are arbitrary executable code; projects should review them and keep the manifest explicit. This remains SQF-VM testing, not an Arma 3 engine test.
