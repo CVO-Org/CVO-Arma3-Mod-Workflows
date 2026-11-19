@@ -385,7 +385,8 @@ Describe 'Arma3 Mod Workflows core' {
             @'
 $global:LASTEXITCODE = 0
 Add-Content -LiteralPath (Join-Path $PSScriptRoot 'invocations.log') -Value ($args -join ' ')
-Write-Output 'HEMTT v1.2.3'
+if ($args -contains '--version') { Write-Output '1.2.3' }
+else { Write-Output 'HEMTT v1.2.3' }
 Write-Output ("Mock received: " + ($args -join ' '))
 if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
 '@ | Set-Content -LiteralPath $mockExecutable -Encoding UTF8
