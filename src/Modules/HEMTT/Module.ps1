@@ -198,7 +198,7 @@ function Invoke-A3WorkflowExternalProcess {
             'Dev' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/dev') }
             'Build' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/build') }
             'Release' {
-                $artifactDirectories += (Join-Path $projectRoot '.hemttout/releases')
+                $artifactDirectories += (Join-Path $projectRoot '.hemttout/release')
                 $artifactDirectories += (Join-Path $projectRoot 'releases')
             }
             'Run' { $artifactDirectories += (Join-Path $projectRoot '.hemttout/build') }
