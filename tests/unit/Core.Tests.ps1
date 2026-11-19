@@ -428,6 +428,7 @@ Describe 'Arma3 Mod Workflows core' {
         $result.Status | Should -Be 'Failed'
         $result.Errors.Count | Should -Be 1
         $result.Warnings.Count | Should -Be 0
+        $result.DurationMs | Should -BeGreaterThan 0
     }
 
     It 'invokes a mock HEMTT executable and captures version, output, and artifacts' {
