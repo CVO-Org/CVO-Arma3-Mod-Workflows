@@ -12,10 +12,11 @@ The project follows Semantic Versioning once the first stable release is publish
 - HEMTT build module with executable discovery, semantic-version detection and pinning, project configuration checks, check/dev/build/release commands, process timeouts, output capture, artifact change tracking, and check-only CLI arguments for pedantic linting and warning promotion.
 - Validation architecture defining category ownership, HEMTT boundaries, normalized findings, severity handling, and optional tool requirements.
 - Initial `Validation.Assets` module for explicit project-relative asset reference manifests, including missing-file and path-escape findings.
+- Initial `Validation.Config` module for explicit required config class declarations, with comment/string filtering, path-safety checks, severity handling, and structured findings.
 - Pester unit and integration coverage for core behavior and HEMTT process execution, failure handling, and artifact reporting.
 - Windows CI coverage for PowerShell 7 and a dedicated Windows PowerShell 5.1 HEMTT compatibility smoke test.
 - Core, HEMTT, and validation architecture documentation.
 
 ### Notes
-- The HEMTT integration is the first implemented capability module. Validation architecture is documented; validation execution modules, automated testing, and release orchestration remain future work.
+- HEMTT is the first build capability module. Framework-owned validation now includes explicit asset references and config class contracts; broader SQF, dependency, package, automated testing, and release orchestration remain future work.
 - HEMTT is an external dependency and is not downloaded or installed by the framework.
