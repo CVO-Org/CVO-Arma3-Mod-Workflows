@@ -202,6 +202,21 @@ jobs:
           $hash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content -LiteralPath "$archivePath.sha256" -Value "$hash  $(Split-Path -Leaf $archivePath)" -Encoding ascii
 
+          $contentFiles = @(
+            Get-ChildItem -LiteralPath $contentPath -File -Recurse |
+              ForEach-Object {
+                $relativePath = $_.FullName.Substring($contentPath.Length).TrimStart([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar).Replace('\', '/')
+                [ordered]@{
+                  path = $relativePath
+                  length = [long]$_.Length
+                  sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+                }
+              }
+          )
+          if ($contentFiles.Count -eq 0) {
+            throw 'HEMTT release output contains no files.'
+          }
+
           $manifest = [ordered]@{
             release_tag = $env:RELEASE_TAG
             source_commit = $env:RELEASE_COMMIT
@@ -209,6 +224,7 @@ jobs:
             archive = (Split-Path -Leaf $archivePath)
             sha256 = $hash
             pbo_count = $pbos.Count
+            files = $contentFiles
           }
           $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $payloadRoot 'release-manifest.json') -Encoding utf8
 
@@ -224,6 +240,7 @@ jobs:
             release-payload/**
           if-no-files-found: error
           retention-days: 14
+          include-hidden-files: true
 
   github-draft:
     name: Create GitHub Release draft
@@ -300,6 +317,26 @@ jobs:
             throw "PBO count mismatch. Manifest: $($manifest.pbo_count); downloaded content: $pboCount."
           }
 
+          $actualFiles = @(Get-ChildItem -LiteralPath $contentPath -File -Recurse)
+          if ($actualFiles.Count -ne @($manifest.files).Count) {
+            throw "Release content file count mismatch. Manifest: $(@($manifest.files).Count); downloaded content: $($actualFiles.Count)."
+          }
+          foreach ($entry in $manifest.files) {
+            $relativePath = ([string]$entry.path).Replace('/', [IO.Path]::DirectorySeparatorChar)
+            $filePath = Join-Path $contentPath $relativePath
+            if (-not (Test-Path -LiteralPath $filePath -PathType Leaf)) {
+              throw "Release content file is missing: $($entry.path)"
+            }
+            $file = Get-Item -LiteralPath $filePath
+            if ([long]$file.Length -ne [long]$entry.length) {
+              throw "Release content file size mismatch: $($entry.path)"
+            }
+            $fileHash = (Get-FileHash -LiteralPath $filePath -Algorithm SHA256).Hash
+            if ($fileHash -ine [string]$entry.sha256) {
+              throw "Release content file SHA-256 mismatch: $($entry.path)"
+            }
+          }
+
           $notePath = Join-Path $env:RUNNER_TEMP 'arma3-workshop-change-note.txt'
           Set-Content -LiteralPath $notePath -Value $env:STEAM_CHANGE_NOTE -Encoding utf8
 
@@ -335,6 +372,7 @@ jobs:
           tag_name: ${{ inputs['release-tag'] }}
           draft: false
           prerelease: ${{ inputs.prerelease }}
+          target_commitish: ${{ github.sha }}
 
   release-status:
     name: Release delivery summary
@@ -368,5 +406,14 @@ jobs:
           }
           if ($env:GITHUB_DRAFT -eq 'failure' -and $env:STEAM -eq 'success') {
             $lines += 'Steam Workshop publishing succeeded but GitHub Release draft creation failed. Rerun the failed GitHub draft job and its dependent publication job; the successful Steam upload does not need to be repeated.'
+          }
+          if ($env:PREFLIGHT -ne 'success' -or $env:BUILD -ne 'success') {
+            throw 'Release preflight or build failed. No destination can be considered published.'
+          }
+          if ($env:PUBLISH_GITHUB -eq 'true' -and ($env:GITHUB_DRAFT -ne 'success' -or $env:GITHUB_PUBLISH -ne 'success')) {
+            throw 'GitHub Release publication did not complete successfully.'
+          }
+          if ($env:PUBLISH_STEAM -eq 'true' -and $env:STEAM -ne 'success') {
+            throw 'Steam Workshop publication did not complete successfully.'
           }
           $lines | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
