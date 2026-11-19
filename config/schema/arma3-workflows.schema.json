@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SkippieDippie/Arma3-Mod-Workflows/blob/dev/config/schema/arma3-workflows.schema.json",
+  "title": "Arma 3 Mod Workflows project configuration",
+  "description": "Initial configuration contract for projects consuming Arma 3 Mod Workflows.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+        },
+        "workshop_id": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]+$"
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "project_root": { "type": "string", "default": "." },
+        "hemtt_config": { "type": ["string", "null"], "default": ".hemtt/project.toml" },
+        "build_output": { "type": "string", "default": ".build" },
+        "release_output": { "type": "string", "default": "release" },
+        "report_output": { "type": "string", "default": ".arma3-workflows/reports" }
+      }
+    },
+    "modules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "build": { "$ref": "#/$defs/moduleToggle" },
+        "validation": { "$ref": "#/$defs/moduleToggle" },
+        "testing": { "$ref": "#/$defs/moduleToggle" },
+        "release": { "$ref": "#/$defs/moduleToggle" },
+        "utilities": { "$ref": "#/$defs/moduleToggle" }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hemtt": { "$ref": "#/$defs/tool" },
+        "sqfvm": { "$ref": "#/$defs/tool" },
+        "sqflint": { "$ref": "#/$defs/tool" },
+        "steamcmd": { "$ref": "#/$defs/tool" }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sqf": { "$ref": "#/$defs/checkToggle" },
+        "config": { "$ref": "#/$defs/checkToggle" },
+        "assets": { "$ref": "#/$defs/checkToggle" },
+        "dependencies": { "$ref": "#/$defs/checkToggle" },
+        "package": { "$ref": "#/$defs/checkToggle" }
+      }
+    },
+    "testing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "automated": { "$ref": "#/$defs/checkToggle" },
+        "in_game": { "$ref": "#/$defs/checkToggle" }
+      }
+    },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "github": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "release_name": { "type": ["string", "null"] },
+            "draft": { "type": "boolean", "default": false },
+            "prerelease": { "type": "boolean", "default": false }
+          }
+        },
+        "steam": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "workshop_id": {
+              "type": ["string", "null"],
+              "pattern": "^[0-9]+$"
+            },
+            "visibility": {
+              "type": "string",
+              "enum": ["public", "friends_only", "private", "unlisted"]
+            },
+            "change_note": { "type": ["string", "null"] }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "moduleToggle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "settings": { "type": "object" }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "path": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] },
+        "required": { "type": "boolean", "default": false },
+        "arguments": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "checkToggle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "severity": { "type": "string", "enum": ["error", "warning"] }
+      }
+    }
+  }
+}
