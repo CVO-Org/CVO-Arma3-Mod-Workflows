@@ -232,7 +232,7 @@ jobs:
           Set-Content -LiteralPath "$archivePath.sha256" -Value "$hash  $(Split-Path -Leaf $archivePath)" -Encoding ascii
 
           $contentFiles = @(
-            Get-ChildItem -LiteralPath $stagedContentPath -File -Recurse |
+            Get-ChildItem -LiteralPath $stagedContentPath -File -Recurse -Force |
               ForEach-Object {
                 $relativePath = $_.FullName.Substring($stagedContentPath.Length).TrimStart([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar).Replace('\', '/')
                 [ordered]@{
@@ -347,7 +347,7 @@ jobs:
             throw "PBO count mismatch. Manifest: $($manifest.pbo_count); downloaded content: $pboCount."
           }
 
-          $actualFiles = @(Get-ChildItem -LiteralPath $contentPath -File -Recurse)
+          $actualFiles = @(Get-ChildItem -LiteralPath $contentPath -File -Recurse -Force)
           if ($actualFiles.Count -ne @($manifest.files).Count) {
             throw "Release content file count mismatch. Manifest: $(@($manifest.files).Count); downloaded content: $($actualFiles.Count)."
           }
