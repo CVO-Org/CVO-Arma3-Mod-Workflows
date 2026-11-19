@@ -53,23 +53,23 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: SkippieDippie/Arma3-Mod-Workflows
-          ref: ${{ inputs.framework-ref }}
+          ref: ${{ inputs['framework-ref'] }}
           path: .arma3-workflows
           persist-credentials: false
 
       - name: Set up HEMTT
         uses: arma-actions/hemtt@a0570ddd80d2b7be9c0f052494c0f700b42668dd
         with:
-          version: ${{ inputs.hemtt-version }}
+          version: ${{ inputs['hemtt-version'] }}
 
       - name: Run framework HEMTT module
         shell: pwsh
         env:
           FRAMEWORK_SCRIPT: ${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
-          PROJECT_ROOT: ${{ inputs.project-root }}
-          CONFIG_PATH: ${{ inputs.config-path }}
+          PROJECT_ROOT: ${{ inputs['project-root'] }}
+          CONFIG_PATH: ${{ inputs['config-path'] }}
           OPERATION: ${{ inputs.operation }}
-          FAIL_ON_WARNING: ${{ inputs.fail-on-warning }}
+          FAIL_ON_WARNING: ${{ inputs['fail-on-warning'] }}
         run: |
           $allowed = @('Detect', 'Check', 'Dev', 'Build', 'Release')
           if ($env:OPERATION -notin $allowed) {
@@ -95,7 +95,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hemtt-dev-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/dev/**' }}
+          path: ${{ inputs['artifact-path'] != '' && inputs['artifact-path'] || '.hemttout/dev/**' }}
           if-no-files-found: error
 
       - name: Upload test build
@@ -103,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hemtt-build-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/build/**' }}
+          path: ${{ inputs['artifact-path'] != '' && inputs['artifact-path'] || '.hemttout/build/**' }}
           if-no-files-found: error
 
       - name: Upload release build
@@ -111,11 +111,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hemtt-release-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ inputs.artifact-path != '' && inputs.artifact-path || '.hemttout/release/**' }}
+          path: ${{ inputs['artifact-path'] != '' && inputs['artifact-path'] || '.hemttout/release/**' }}
           if-no-files-found: error
 
       - name: Upload project release directory
-        if: ${{ inputs.operation == 'Release' && inputs.artifact-path == '' }}
+        if: ${{ inputs.operation == 'Release' && inputs['artifact-path'] == '' }}
         uses: actions/upload-artifact@v4
         with:
           name: hemtt-project-releases-${{ github.run_id }}-${{ github.run_attempt }}
