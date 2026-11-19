@@ -39,7 +39,7 @@ Consuming projects may place the submodule wherever convenient and may keep thei
 
 ## Getting started
 
-Reusable workflow files live directly in `.github/workflows/`, as required by GitHub Actions; the separate top-level `workflows/` directory is intentionally not used for callable workflow definitions. The framework is under active development. The PowerShell module and command-line entry point are available for initialization and module execution; capability modules are being implemented incrementally.
+Reusable workflow files live directly in `.github/workflows/`, as required by GitHub Actions; the separate top-level `workflows/` directory is intentionally not used for callable workflow definitions. The first callable workflow is `hemtt.yml`; see [workflow usage](docs/development/core-usage.md#reusable-hemtt-workflow). The PowerShell module and command-line entry point are available for initialization and module execution; capability modules are being implemented incrementally.
 
 A consuming project will eventually add the framework as a Git submodule, pin it to a release tag, and provide an `arma3-workflows.yml` file at its repository root (or pass an explicit configuration path).
 
@@ -53,6 +53,6 @@ The PowerShell module is available under `src/Arma3ModWorkflows.psd1`; the CLI e
 
 The `Build.HEMTT` module supports HEMTT detection, version pinning, project configuration checks, check/dev/build/release operations, process timeouts, and artifact reporting. HEMTT remains an external dependency. Initial validation modules cover explicit asset references, config class contracts, addon dependencies, SQF parsing through SQF-VM in automated parse-only mode, and structural inspection of configured PBO artifacts. SQF-VM remains an external dependency; parse success does not establish Arma 3 runtime compatibility. Core CI tests run under PowerShell 7, with a separate Windows PowerShell 5.1 compatibility smoke test covering HEMTT, SQF-VM adapters, and PBO inspection.
 
-Reusable workflow orchestration and release publication modules remain under development. Initial SQF-VM runtime test execution is available through `Testing.SQFVM`, using an explicit test-script manifest and process exit codes; this does not replace in-game testing.
+The first reusable GitHub Actions workflow, `.github/workflows/hemtt.yml`, provides Windows HEMTT check/dev/build/release execution and artifact upload. Validation/testing workflows and release publication remain under development. Initial SQF-VM runtime test execution is available through `Testing.SQFVM`, using an explicit test-script manifest and process exit codes; this does not replace in-game testing.
 
 See [core usage](docs/development/core-usage.md) and [CHANGELOG.md](CHANGELOG.md) for current capabilities and milestones. This repository does not provide project templates or require consuming projects to adopt a common directory structure.
