@@ -1346,6 +1346,8 @@ exit 7
         (Test-A3WorkflowConfiguration -Configuration $invalidType).IsValid | Should -BeFalse
         $invalidRange = @{ schema_version = 1; testing = @{ sqfvm = @{ files = @('tests/main.sqf'); max_runtime_ms = -1 } } }
         (Test-A3WorkflowConfiguration -Configuration $invalidRange).IsValid | Should -BeFalse
+        $invalidTimeout = @{ schema_version = 1; tools = @{ sqfvm = @{ timeout_seconds = 0 } } }
+        (Test-A3WorkflowConfiguration -Configuration $invalidTimeout).IsValid | Should -BeFalse
     }
 
     It 'validates the entire test manifest before launching any process' {
