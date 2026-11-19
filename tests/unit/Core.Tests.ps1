@@ -176,7 +176,7 @@ Describe 'Arma3 Mod Workflows core' {
         $context = [pscustomobject]@{ Logger = $null }
         $result = Invoke-A3WorkflowModules -Registry $registry -Context $context -Operation 'Validate'
         $result[0].Status | Should -Be 'Skipped'
-        $result[0].Summary | Should -Match 'not supported'
+        $result[0].Summary | Should -Match 'unsupported'
     }
 
     It 'normalizes successful module execution' {
