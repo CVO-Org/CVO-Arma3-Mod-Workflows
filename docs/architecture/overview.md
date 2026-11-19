@@ -63,6 +63,10 @@ See [Validation architecture](validation.md) for the validation pipeline, catego
 
 The first callable workflow is `.github/workflows/hemtt.yml`. It runs on Windows, checks out the consuming project and a separately pinned framework revision, installs a selected HEMTT version through the pinned `arma-actions/hemtt` action, invokes `Build.HEMTT`, and uploads operation-specific build artifacts. The caller must pass the same immutable framework tag or commit in both the reusable workflow reference and its required `framework-ref` input. The workflow is build-only; it does not publish GitHub Releases or Steam Workshop content.
 
+## Initial reusable validation workflow
+
+The callable `.github/workflows/validate.yml` workflow checks out the consuming project and a separately pinned framework revision, then runs selected validation modules through the framework CLI on Windows. It accepts a project root, optional configuration path, module list, and warning/skip policies. Its default module list covers assets, config declarations, addon dependencies, SQF parsing, and PBO package structure. Skipped modules fail the workflow by default so an empty manifest or unavailable optional validator cannot silently appear as a successful validation run. The workflow does not build the mod, execute Arma 3, or publish artifacts.
+
 ## Execution environments
 
 - **Local:** Windows-first, PowerShell interface, with clear prerequisite checks.
