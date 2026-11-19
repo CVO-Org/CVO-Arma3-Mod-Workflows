@@ -405,6 +405,12 @@ if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
             $detectResult.Data.Arguments | Should -Contain '--version'
             $detectResult.Data.Output | Should -Match 'Mock received: --version'
 
+            $context.Configuration.tools.hemtt.version = '2.0.0'
+            $detectMismatch = & $descriptor.Invoke $context 'Detect'
+            $detectMismatch.Status | Should -Be 'Failed'
+            $detectMismatch.Data.VersionMismatch | Should -BeTrue
+            $context.Configuration.tools.hemtt.version = '1.2.3'
+
             $artifactDirectory = Join-Path $projectRoot '.hemttout/build'
             New-Item -ItemType Directory -Path $artifactDirectory -Force | Out-Null
             'mock artifact' | Set-Content -LiteralPath (Join-Path $artifactDirectory 'test.pbo') -Encoding UTF8
