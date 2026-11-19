@@ -401,7 +401,9 @@ if ($args -contains 'release') {
     'generated release pbo' | Set-Content -LiteralPath (Join-Path $releaseOutput 'generated-release.pbo')
     'generated release zip' | Set-Content -LiteralPath (Join-Path $releaseArchives 'MockProject-generated.zip')
 }
-if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
+[Console]::Error.WriteLine('Mock stderr')
+if ($args -contains '--sleep') { Start-Sleep -Seconds 3 }
+if ($args -contains '--fail') { exit 7 }
 '@ | Set-Content -LiteralPath $mockExecutable -Encoding UTF8
 
             $context = [pscustomobject]@{
@@ -446,6 +448,9 @@ if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
             $context.Configuration.tools.hemtt.version = '1.2.3'
             $buildResult.Data.Arguments | Should -Contain 'build'
             $buildResult.Data.Output | Should -Match 'Mock received: build'
+            $buildResult.Data.StandardOutput | Should -Match 'Mock received: build'
+            $buildResult.Data.StandardError | Should -Match 'Mock stderr'
+            $buildResult.Data.TimedOut | Should -BeFalse
             $buildResult.Data.Artifacts | Should -Contain (Join-Path $artifactDirectory 'generated.pbo')
             $buildResult.Data.Artifacts | Should -Not -Contain (Join-Path $artifactDirectory 'stale.pbo')
 
@@ -480,6 +485,13 @@ if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
             $failureResult.Status | Should -Be 'Failed'
             $failureResult.Data.ExitCode | Should -Be 7
             $failureResult.Data.Output | Should -Match '--fail'
+
+            $context.Configuration.tools.hemtt.arguments = @('--sleep')
+            $context.Configuration.tools.hemtt.timeout_seconds = 1
+            $timeoutResult = & $descriptor.Invoke $context 'Build'
+            $timeoutResult.Status | Should -Be 'Failed'
+            $timeoutResult.Data.TimedOut | Should -BeTrue
+            $timeoutResult.Data.ExitCode | Should -Be 124
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
