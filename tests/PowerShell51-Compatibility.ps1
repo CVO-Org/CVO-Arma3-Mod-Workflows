@@ -76,6 +76,27 @@ exit 9
         throw "PowerShell 5.1 SQF-VM test compatibility check failed. $details"
     }
 
+    $releaseDirectory = Join-Path $projectRoot 'release'
+    New-Item -ItemType Directory -Path $releaseDirectory -Force | Out-Null
+    $pboBytes = New-Object 'System.Collections.Generic.List[byte]'
+    $pboBytes.AddRange([Text.Encoding]::ASCII.GetBytes('config.cpp'))
+    $pboBytes.Add([byte]0)
+    $pboBytes.AddRange([byte[]](0,0,0,0))
+    $pboBytes.AddRange([BitConverter]::GetBytes([uint32]3))
+    $pboBytes.AddRange([byte[]](0,0,0,0))
+    $pboBytes.AddRange([byte[]](0,0,0,0))
+    $pboBytes.AddRange([BitConverter]::GetBytes([uint32]3))
+    $pboBytes.Add([byte]0)
+    $pboBytes.AddRange([byte[]](0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+    $pboBytes.AddRange([Text.Encoding]::ASCII.GetBytes('abc'))
+    [IO.File]::WriteAllBytes((Join-Path $releaseDirectory 'smoke.pbo'), $pboBytes.ToArray())
+    $packageContext = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ package = @{ artifacts = @('release/smoke.pbo') } } } }
+    $packageResults = @(Invoke-A3WorkflowModules -Registry $context.Registry -Context $packageContext -Operation Validate -ModuleIds @('Validation.Package'))
+    if ($packageResults.Count -ne 1 -or $packageResults[0].Status -ne 'Passed') {
+        $details = if ($packageResults.Count -gt 0) { $packageResults[0] | ConvertTo-Json -Depth 10 } else { 'No module result returned.' }
+        throw "PowerShell 5.1 PBO package validation compatibility check failed. $details"
+    }
+
     Write-Output 'Windows PowerShell 5.1 compatibility check passed.'
 }
 finally {
