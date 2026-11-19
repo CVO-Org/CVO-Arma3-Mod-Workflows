@@ -32,11 +32,15 @@ Each category can be disabled independently. The existing `severity` setting con
 
 The initial implementation should be incremental. A category must not claim coverage until its checks and fixtures exist. Tool-backed checks must detect the executable and version before execution, use configured timeouts, capture stdout/stderr, and return structured failures. Tools are never downloaded or installed automatically.
 
+## Initial config validation scope
+
+The first config-specific check is implemented by `Validation.Config`. Projects may declare required class declarations in `validation.config.required_classes`; each entry names a project-relative config source path and a class identifier. The validator checks for a class declaration with a class body, including nested declarations, while ignoring line comments, block comments, and quoted strings. It does not attempt to parse the complete Arma config language, resolve inheritance, evaluate preprocessor directives, or replace HEMTT's config checks. A class declaration split across unusual macro expansions or generated preprocessor output is outside this initial check's scope. Empty manifests are reported as skipped, not passed.
+
 ## Initial asset validation scope
 
 The first framework-owned validator is `Validation.Assets`. It checks the explicit list in `validation.assets.references` against files inside the consuming project root. References must be project-relative; absolute paths and paths that escape the project root are rejected. This avoids guessing which strings in SQF/config files are file references and avoids false positives for Arma engine paths such as `\\a3\\...`.
 
-The initial manifest is intentionally explicit rather than an automatic source scanner. Projects should add only local assets that are expected to exist in their repository. Engine-provided assets and runtime-generated files should not be listed. Empty manifests are reported as skipped, not passed, so a project cannot mistake an unconfigured check for coverage. The configured severity determines whether a missing reference is an error or warning.
+The initial manifest is intentionally explicit rather than an automatic source scanner. Projects should add only local assets that are expected to exist in their repository. Engine-provided assets and runtime-generated files should not be listed. Empty manifests are reported as skipped, not passed, so a project cannot mistake an unconfigured check for coverage. The configured severity determines whether a missing reference is an error or warning. Config class expectations use the same severity policy for missing files and declarations.
 
 ## Normalized finding contract
 
