@@ -70,6 +70,11 @@ on:
 permissions:
   contents: write
 
+secrets:
+  framework-token:
+    description: Fine-grained token with contents:read access to the private framework repository
+    required: true
+
 concurrency:
   group: arma3-release-${{ inputs['release-tag'] }}
   cancel-in-progress: false
@@ -123,6 +128,7 @@ jobs:
           repository: SkippieDippie/Arma3-Mod-Workflows
           ref: ${{ inputs['framework-ref'] }}
           path: .arma3-workflows
+          token: ${{ secrets.framework-token }}
           persist-credentials: false
 
       - name: Set up HEMTT
@@ -262,6 +268,7 @@ jobs:
           body: ${{ inputs['release-notes'] }}
           draft: true
           prerelease: ${{ inputs.prerelease }}
+          target_commitish: ${{ github.sha }}
           files: |
             release-artifact/release-payload/*.zip
             release-artifact/release-payload/*.sha256
@@ -272,6 +279,7 @@ jobs:
     name: Publish to Arma 3 Steam Workshop
     needs: build
     if: ${{ inputs['publish-steam'] }}
+    permissions: {}
     runs-on: [self-hosted, Windows, X64, arma3-publisher]
     steps:
       - name: Download the exact release payload
@@ -361,6 +369,7 @@ jobs:
     needs: [build, github-draft, steam-publish]
     if: >-
       always() &&
+      inputs['publish-github'] &&
       needs.build.result == 'success' &&
       needs.github-draft.result == 'success' &&
       (!inputs['publish-steam'] || needs.steam-publish.result == 'success')
@@ -388,6 +397,8 @@ jobs:
           GITHUB_DRAFT: ${{ needs.github-draft.result }}
           STEAM: ${{ needs.steam-publish.result }}
           GITHUB_PUBLISH: ${{ needs.github-publish.result }}
+          PUBLISH_GITHUB: ${{ inputs['publish-github'] }}
+          PUBLISH_STEAM: ${{ inputs['publish-steam'] }}
         run: |
           $lines = @(
             '# Arma 3 release delivery',
@@ -414,6 +425,9 @@ jobs:
             throw 'GitHub Release publication did not complete successfully.'
           }
           if ($env:PUBLISH_STEAM -eq 'true' -and $env:STEAM -ne 'success') {
+            $lines += 'Steam Workshop publication did not complete successfully.'
+            $lines | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
             throw 'Steam Workshop publication did not complete successfully.'
           }
+          $lines | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
           $lines | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
