@@ -21,5 +21,5 @@ The project follows Semantic Versioning once the first stable release is publish
 - Core, HEMTT, and validation architecture documentation.
 
 ### Notes
-- HEMTT is the first build capability module. Framework-owned validation now includes explicit asset references and config class contracts; package validation, SQF-VM runtime/unit-test orchestration, and release orchestration remain future work.
+- HEMTT is the first build capability module. Framework-owned validation includes explicit asset references, config class contracts, addon dependency checks, and SQF-VM parse-only validation. Initial SQF-VM runtime test execution is available; package validation and release orchestration remain future work.
 - HEMTT is an external dependency and is not downloaded or installed by the framework.
