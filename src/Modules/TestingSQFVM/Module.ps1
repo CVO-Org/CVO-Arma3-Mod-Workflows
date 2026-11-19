@@ -58,9 +58,9 @@
 
         $timeoutSeconds = 600
         if ($tool -is [System.Collections.IDictionary] -and $tool.timeout_seconds) { $timeoutSeconds = [int]$tool.timeout_seconds }
-        if ($timeoutSeconds -lt 1) {
+        if ($timeoutSeconds -lt 1 -or $timeoutSeconds -gt 2147483) {
             $watch.Stop()
-            return (New-A3WorkflowModuleResult -Module 'Testing.SQFVM' -Operation $Operation -Status Failed -Summary 'SQF-VM timeout must be greater than zero.' -Errors @(@{ Id = 'SQFVM_INVALID_TIMEOUT'; Message = 'tools.sqfvm.timeout_seconds must be a positive integer.'; Tool = 'SQF-VM' }) -StartedAt $started -DurationMs ([Math]::Max(1, $watch.ElapsedMilliseconds)))
+            return (New-A3WorkflowModuleResult -Module 'Testing.SQFVM' -Operation $Operation -Status Failed -Summary 'SQF-VM timeout is outside the supported range.' -Errors @(@{ Id = 'SQFVM_INVALID_TIMEOUT'; Message = 'tools.sqfvm.timeout_seconds must be between 1 and 2147483.'; Tool = 'SQF-VM' }) -StartedAt $started -DurationMs ([Math]::Max(1, $watch.ElapsedMilliseconds)))
         }
 
         $maxRuntimeMs = 0
