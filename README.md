@@ -39,7 +39,7 @@ Consuming projects may place the submodule wherever convenient and may keep thei
 
 ## Getting started
 
-Reusable workflow files live directly in `.github/workflows/`, as required by GitHub Actions; the separate top-level `workflows/` directory is intentionally not used for callable workflow definitions. The first callable workflow is `hemtt.yml`; see [workflow usage](docs/development/core-usage.md#reusable-hemtt-workflow). The PowerShell module and command-line entry point are available for initialization and module execution; capability modules are being implemented incrementally.
+Reusable workflow files live directly in `.github/workflows/`, as required by GitHub Actions; the separate top-level `workflows/` directory is intentionally not used for callable workflow definitions. The callable workflows are `hemtt.yml`, `validate.yml`, and `test.yml`; see [workflow usage](docs/development/core-usage.md#reusable-sqf-vm-test-workflow). The framework provides HEMTT build, validation, and SQF-VM test modules.
 
 A consuming project will eventually add the framework as a Git submodule, pin it to a release tag, and provide an `arma3-workflows.yml` file at its repository root (or pass an explicit configuration path).
 
