@@ -17,6 +17,22 @@
             return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary 'HEMTT is disabled in tool configuration.' -StartedAt $started)
         }
 
+        if ($Operation -ne 'Detect') {
+            $hemttConfig = '.hemtt/project.toml'
+            if ($Context.Configuration.paths -is [System.Collections.IDictionary] -and $Context.Configuration.paths.Contains('hemtt_config')) {
+                $hemttConfig = $Context.Configuration.paths.hemtt_config
+            }
+            if ([string]::IsNullOrWhiteSpace([string]$hemttConfig)) {
+                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT project configuration path is not configured.' -Errors @(@{ Message = 'paths.hemtt_config must identify the HEMTT project.toml file.' }) -StartedAt $started)
+            }
+            if (-not [IO.Path]::IsPathRooted([string]$hemttConfig)) {
+                $hemttConfig = Join-Path $projectRoot ([string]$hemttConfig)
+            }
+            if (-not (Test-Path -LiteralPath $hemttConfig -PathType Leaf)) {
+                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary "HEMTT project configuration was not found: $hemttConfig" -Errors @(@{ Message = 'Required HEMTT project.toml file does not exist.'; Path = $hemttConfig; Remediation = 'Create .hemtt/project.toml or configure paths.hemtt_config.' }) -StartedAt $started)
+            }
+        }
+
         $executable = $null
         if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.path) {
             $configuredPath = [string]$toolConfiguration.path
