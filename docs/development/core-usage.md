@@ -67,11 +67,11 @@ Examples:
     ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Dev -Module Build.HEMTT
     ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Release -Module Build.HEMTT
 
-HEMTT output, process exit code, executable path, and discovered output artifact paths are included in the module result. The module scans `.hemttout/dev`, `.hemttout/build`, or `.hemttout/release` as appropriate; for release operations it also reports archives in the HEMTT `releases` directory. HEMTT itself remains an external dependency; the framework does not download or install it.
+HEMTT output, process exit code, executable path, and output artifact paths are included in the module result. Artifact reporting compares file paths, sizes, and modification timestamps before and after execution, so unchanged files from earlier runs are excluded. The module scans `.hemttout/dev`, `.hemttout/build`, or `.hemttout/releases` as appropriate; release operations also scan the project-level `releases` directory. HEMTT itself remains an external dependency; the framework does not download or install it.
 
 ## Current limitations
 
 - YAML requires `powershell-yaml`; JSON does not.
 - The HEMTT module is the first capability module; validation, testing, and release orchestration modules are not yet implemented.
-- The HEMTT module currently invokes the CLI synchronously and reports its output; cancellation, streaming log forwarding, and configurable artifact-copying are future work.
+- The HEMTT module currently invokes the CLI synchronously and captures its output after process completion; cancellation, streaming log forwarding, and configurable artifact-copying are future work.
 - The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
