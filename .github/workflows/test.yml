@@ -1,0 +1,111 @@
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      framework-ref:
+        description: Immutable tag or commit used to reference this reusable workflow
+        required: true
+        type: string
+      sqfvm-version:
+        description: SQF-VM GitHub release tag to install
+        required: false
+        type: string
+        default: v2026.04.03-ed9f5f5
+      project-root:
+        description: Project root relative to the caller repository workspace
+        required: false
+        type: string
+        default: .
+      config-path:
+        description: Optional framework configuration path relative to project root
+        required: false
+        type: string
+        default: ''
+      fail-on-skipped:
+        description: Fail when SQF-VM test execution is skipped
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: SQF-VM runtime tests
+    runs-on: windows-latest
+    steps:
+      - name: Check out consuming project
+        uses: actions/checkout@v5
+
+      - name: Check out framework at the pinned revision
+        uses: actions/checkout@v5
+        with:
+          repository: SkippieDippie/Arma3-Mod-Workflows
+          ref: \${{ inputs.framework-ref }}
+          path: .arma3-workflows
+          persist-credentials: false
+
+      - name: Install SQF-VM
+        shell: pwsh
+        env:
+          SQFVM_VERSION: \${{ inputs.sqfvm-version }}
+        run: |
+          if ($env:SQFVM_VERSION -notmatch '^[A-Za-z0-9._-]+$') {
+            throw "Invalid SQF-VM release tag '$env:SQFVM_VERSION'."
+          }
+
+          $archive = Join-Path $env:RUNNER_TEMP 'sqfvm_windows_x64.zip'
+          $destination = Join-Path $env:RUNNER_TEMP 'sqfvm'
+          $downloadUrl = "https://github.com/SQFvm/runtime/releases/download/$($env:SQFVM_VERSION)/sqfvm_windows_x64.zip"
+
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $archive
+          New-Item -ItemType Directory -Path $destination -Force | Out-Null
+          Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force
+
+          $executable = Get-ChildItem -LiteralPath $destination -Filter 'sqfvm.exe' -File -Recurse |
+            Select-Object -First 1
+          if (-not $executable) {
+            throw "SQF-VM archive '$downloadUrl' did not contain sqfvm.exe."
+          }
+
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $executable.DirectoryName
+          Write-Host "Installed SQF-VM from release $env:SQFVM_VERSION at $($executable.FullName)."
+
+      - name: Run configured SQF-VM test scripts
+        shell: pwsh
+        env:
+          FRAMEWORK_SCRIPT: \${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
+          PROJECT_ROOT: \${{ inputs.project-root }}
+          CONFIG_PATH: \${{ inputs.config-path }}
+          FAIL_ON_SKIPPED: \${{ inputs.fail-on-skipped }}
+        run: |
+          $arguments = @(
+            '-ProjectRoot', $env:PROJECT_ROOT,
+            '-Operation', 'Test',
+            '-Module', 'Testing.SQFVM'
+          )
+          if (-not [string]::IsNullOrWhiteSpace($env:CONFIG_PATH)) {
+            $arguments += @('-ConfigPath', $env:CONFIG_PATH)
+          }
+
+          $output = & pwsh -NoProfile -NonInteractive -File $env:FRAMEWORK_SCRIPT @arguments 2>&1 | Out-String
+          $frameworkExitCode = $LASTEXITCODE
+
+          try {
+            $results = @($output | ConvertFrom-Json -ErrorAction Stop)
+          }
+          catch {
+            throw "Framework CLI did not return valid JSON (exit code $frameworkExitCode). Output: $output"
+          }
+
+          $skipped = @($results | Where-Object { $_.Status -eq 'Skipped' })
+          if ($env:FAIL_ON_SKIPPED -eq 'true' -and $skipped.Count -gt 0) {
+            $details = @($skipped | ForEach-Object { "$($_.Module): $($_.Summary)" }) -join '; '
+            throw "SQF-VM test execution was skipped: $details"
+          }
+
+          if ($frameworkExitCode -ne 0) {
+            throw "SQF-VM test execution failed with exit code $frameworkExitCode. Output: $output"
+          }
