@@ -490,6 +490,31 @@ Describe 'Arma3 Mod Workflows core' {
         }
     }
 
+    It 'executes hemtt.ps1 from a configured tool directory' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("HEMTT Directory Execution " + [guid]::NewGuid().ToString('N'))
+        $toolDirectory = Join-Path $projectRoot 'tools'
+        New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
+        try {
+            @'
+if ($args -contains '--version') { Write-Output 'HEMTT v1.2.3'; exit 0 }
+exit 0
+'@ | Set-Content -LiteralPath (Join-Path $toolDirectory 'hemtt.ps1') -Encoding UTF8
+            $context = [pscustomobject]@{
+                ProjectRoot = $projectRoot
+                Configuration = @{ paths = @{}; tools = @{ hemtt = @{ path = 'tools'; version = '1.2.3' } } }
+                Logger = $null
+            }
+            $result = & $descriptor.Invoke $context 'Detect'
+            $result.Status | Should -Be 'Passed'
+            $result.Data.Executable | Should -Be (Join-Path $toolDirectory 'hemtt.ps1')
+            $result.Data.Version | Should -Be '1.2.3'
+        }
+        finally {
+            Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'invokes a mock HEMTT executable and captures version, output, and artifacts' {
         $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
         $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("HEMTT Mock Project " + [guid]::NewGuid().ToString('N'))
