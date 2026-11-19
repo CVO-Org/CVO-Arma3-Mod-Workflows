@@ -89,6 +89,8 @@ jobs:
         shell: pwsh
         env:
           RELEASE_TAG: ${{ inputs['release-tag'] }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
           PUBLISH_GITHUB: ${{ inputs['publish-github'] }}
           PUBLISH_STEAM: ${{ inputs['publish-steam'] }}
           WORKSHOP_ID: ${{ inputs['workshop-id'] }}
