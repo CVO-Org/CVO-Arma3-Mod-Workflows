@@ -1264,3 +1264,85 @@ exit 0
         (Test-A3WorkflowConfiguration -Configuration $invalid).IsValid | Should -BeFalse
     }
 }
+
+
+Describe 'Testing.SQFVM module' {
+    BeforeAll {
+        $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        . (Join-Path $repositoryRoot 'src/Core/ModuleManager.ps1')
+        $testDescriptor = & (Join-Path $repositoryRoot 'src/Modules/TestingSQFVM/Module.ps1')
+    }
+
+    It 'executes only configured test scripts and captures process output' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF VM Tests " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'tests') -Force | Out-Null
+        'exitcode__ 0;' | Set-Content -LiteralPath (Join-Path $projectRoot 'tests/pass.sqf')
+        $mockPath = Join-Path $projectRoot 'mock-sqfvm.ps1'
+        @'
+if ($args -notcontains '--automated' -or $args -notcontains '--input-sqf') { exit 8 }
+Write-Output 'Mock test output'
+[Console]::Error.WriteLine('Mock test diagnostic')
+exit 0
+'@ | Set-Content -LiteralPath $mockPath
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ testing = @{ sqfvm = @{ files = @('tests/pass.sqf'); max_runtime_ms = 5000 } }; tools = @{ sqfvm = @{ path = $mockPath; timeout_seconds = 10 } } } }
+            $result = & $testDescriptor.Invoke $context 'Test'
+            $result.Status | Should -Be 'Passed'
+            $result.Data.TestCount | Should -Be 1
+            $result.Data.PassedCount | Should -Be 1
+            $result.Data.ExecutionMode | Should -Be 'ExplicitTestScripts'
+            $result.Data.Processes[0].StandardOutput | Should -Match 'Mock test output'
+            $result.Data.Processes[0].StandardError | Should -Match 'Mock test diagnostic'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'fails on nonzero test exit codes and process timeouts' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF VM Tests " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'tests') -Force | Out-Null
+        'exitcode__ 1;' | Set-Content -LiteralPath (Join-Path $projectRoot 'tests/fail.sqf')
+        $mockPath = Join-Path $projectRoot 'mock-sqfvm.ps1'
+        @'
+if ($args -contains '--slow') { Start-Sleep -Seconds 5; exit 0 }
+exit 7
+'@ | Set-Content -LiteralPath $mockPath
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ testing = @{ sqfvm = @{ files = @('tests/fail.sqf') } }; tools = @{ sqfvm = @{ path = $mockPath } } } }
+            $result = & $testDescriptor.Invoke $context 'Test'
+            $result.Status | Should -Be 'Failed'
+            $result.Errors.Id | Should -Contain 'SQFVM_TEST_FAILED'
+            $timeoutContext = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ testing = @{ sqfvm = @{ files = @('tests/fail.sqf') } }; tools = @{ sqfvm = @{ path = $mockPath; arguments = @('--slow'); timeout_seconds = 1 } } } }
+            $timeoutResult = & $testDescriptor.Invoke $timeoutContext 'Test'
+            $timeoutResult.Status | Should -Be 'Failed'
+            $timeoutResult.Errors.Id | Should -Contain 'SQFVM_TEST_TIMEOUT'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'rejects unsafe or missing test paths and skips empty manifests' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("SQF VM Tests " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        $mockPath = Join-Path $projectRoot 'mock-sqfvm.ps1'
+        'exit 0' | Set-Content -LiteralPath $mockPath
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ testing = @{ sqfvm = @{ files = @('missing.sqf', '../outside.sqf', 'wrong.txt') } }; tools = @{ sqfvm = @{ path = $mockPath } } } }
+            $result = & $testDescriptor.Invoke $context 'Test'
+            $result.Status | Should -Be 'Failed'
+            $result.Errors.Id | Should -Contain 'SQFVM_FILE_NOT_FOUND'
+            $result.Errors.Id | Should -Contain 'SQFVM_PATH_OUTSIDE_PROJECT'
+            $result.Errors.Id | Should -Contain 'SQFVM_INVALID_EXTENSION'
+            $empty = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ testing = @{ sqfvm = @{ files = @() } } } }
+            (& $testDescriptor.Invoke $empty 'Test').Status | Should -Be 'Skipped'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'validates SQF-VM testing configuration against the schema' {
+        $valid = @{ schema_version = 1; testing = @{ sqfvm = @{ enabled = $true; files = @('tests/main.sqf'); config_files = @('addons/example/config.cpp'); max_runtime_ms = 30000 } }; tools = @{ sqfvm = @{ path = 'tools/sqfvm.exe'; timeout_seconds = 60 } } }
+        (Test-A3WorkflowConfiguration -Configuration $valid).IsValid | Should -BeTrue
+        $invalid = @{ schema_version = 1; testing = @{ sqfvm = @{ files = @(42); max_runtime_ms = -1 } } }
+        (Test-A3WorkflowConfiguration -Configuration $invalid).IsValid | Should -BeFalse
+    }
+}
