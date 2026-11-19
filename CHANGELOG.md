@@ -14,11 +14,11 @@ The project follows Semantic Versioning once the first stable release is publish
 - Initial `Validation.Assets` module for explicit project-relative asset reference manifests, including missing-file and path-escape findings.
 - Initial `Validation.Config` module for explicit required config class declarations, with comment/string filtering, path-safety checks, severity handling, and structured findings.
 - Initial `Validation.Dependencies` module for `CfgPatches` addon declarations, literal `requiredAddons[]` references, duplicate detection, and explicit internal-addon consistency checks.
-- Initial `Validation.SQF` adapter for SQFLint with explicit source manifests, JSON diagnostic normalization, process timeouts, and optional-tool handling.
+- Initial `Validation.SQF` adapter for SQF-VM automated parse-only validation, with explicit source manifests, process output capture, timeouts, and optional-tool handling.
 - Pester unit and integration coverage for core behavior and HEMTT process execution, failure handling, and artifact reporting.
 - Windows CI coverage for PowerShell 7 and a dedicated Windows PowerShell 5.1 HEMTT compatibility smoke test.
 - Core, HEMTT, and validation architecture documentation.
 
 ### Notes
-- HEMTT is the first build capability module. Framework-owned validation now includes explicit asset references and config class contracts; broader SQF and package validation, automated testing, and release orchestration remain future work.
+- HEMTT is the first build capability module. Framework-owned validation now includes explicit asset references and config class contracts; package validation, SQF-VM runtime/unit-test orchestration, and release orchestration remain future work.
 - HEMTT is an external dependency and is not downloaded or installed by the framework.
