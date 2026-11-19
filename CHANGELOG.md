@@ -19,7 +19,8 @@ The project follows Semantic Versioning once the first stable release is publish
 - Initial `Validation.Package` module for explicit PBO artifact manifests, path safety, structural header and data-boundary checks, and optional required-entry verification.
 - Pester unit and integration coverage for core behavior and HEMTT process execution, failure handling, and artifact reporting.
 - Windows CI coverage for PowerShell 7 and a dedicated Windows PowerShell 5.1 compatibility smoke test covering HEMTT, SQF-VM validation/testing, and PBO package inspection.
-- Core, HEMTT, and validation architecture documentation.
+- Reusable Windows HEMTT GitHub Actions workflow with pinned HEMTT setup action, explicit framework-ref pin, operation inputs, and build artifact uploads.
+- Core, HEMTT, validation, and reusable workflow usage documentation.
 
 ### Notes
 - HEMTT is the first build capability module. Framework-owned validation includes explicit asset references, config class contracts, addon dependency checks, and SQF-VM parse-only validation. Initial SQF-VM runtime test execution and structural PBO package validation are available; release orchestration remains future work.
