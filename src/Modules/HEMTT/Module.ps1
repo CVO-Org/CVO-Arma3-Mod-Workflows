@@ -132,6 +132,14 @@
                 if ($Operation -eq 'Detect' -and $outputText -match '(?i)HEMTT\s+v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
                     $version = $Matches[1]
                 }
+                if ($Operation -eq 'Detect' -and $toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.version) {
+                    $expectedVersion = ([string]$toolConfiguration.version).TrimStart('v')
+                    if (-not $version -or $version -ne $expectedVersion) {
+                        $versionMismatch = $true
+                        $exitCode = 1
+                        $outputText = "HEMTT version mismatch. Expected $expectedVersion but found $version." + [Environment]::NewLine + $outputText
+                    }
+                }
             }
         }
         catch {
