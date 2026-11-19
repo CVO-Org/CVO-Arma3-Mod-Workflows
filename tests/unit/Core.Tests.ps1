@@ -779,6 +779,7 @@ if ($args -contains '--fail') { exit 7 }
         $merged.paths.release_output | Should -Be 'release'
         $merged.modules.build.enabled | Should -BeFalse
     }
+}
 
 Describe 'Validation.Assets module' {
     BeforeAll {
