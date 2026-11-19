@@ -26,7 +26,7 @@
   "validation": {
     "sqf": {"enabled": true, "severity": "error"},
     "config": {"enabled": true, "severity": "error"},
-    "assets": {"enabled": true, "severity": "error"},
+    "assets": {"enabled": true, "severity": "error", "references": []},
     "dependencies": {"enabled": true, "severity": "warning"},
     "package": {"enabled": true, "severity": "error"}
   },
