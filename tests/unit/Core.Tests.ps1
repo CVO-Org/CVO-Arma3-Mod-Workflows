@@ -68,6 +68,11 @@ Describe 'Arma3 Mod Workflows core' {
         (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
     }
 
+    It 'accepts HEMTT version pins and shared CLI arguments' {
+        $config = @{ schema_version = 1; tools = @{ hemtt = @{ version = '1.21.0'; required = $true; arguments = @('--no-color') } } }
+        (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeTrue
+    }
+
     It 'rejects non-string tool arguments' {
         $config = @{ schema_version = 1; tools = @{ hemtt = @{ arguments = @('--release', 42) } } }
         (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
