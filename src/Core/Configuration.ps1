@@ -61,6 +61,10 @@ function Test-A3WorkflowSchemaNode {
   if($Rule.minLength -and $Value.Length -lt [int]$Rule.minLength){$errors.Add("$Path must contain at least $($Rule.minLength) characters.")}
   if($Rule.pattern -and $Value -notmatch [string]$Rule.pattern){$errors.Add("$Path does not match the required pattern.")}
  }
+ if(($Value -is [ValueType]) -and $Value -isnot [bool] -and $Value -isnot [datetime]){
+  if($Rule.ContainsKey('minimum') -and [double]$Value -lt [double]$Rule.minimum){$errors.Add("$Path must be greater than or equal to $($Rule.minimum).")}
+  if($Rule.ContainsKey('maximum') -and [double]$Value -gt [double]$Rule.maximum){$errors.Add("$Path must be less than or equal to $($Rule.maximum).")}
+ }
  if($Value -is [System.Collections.IDictionary] -or $Value -is [pscustomobject]){
   $map=ConvertTo-A3WorkflowHashtable $Value
   foreach($required in @($Rule.required)){if($required -and -not $map.ContainsKey([string]$required)){$errors.Add("$Path is missing required property '$required'.")}}
