@@ -388,7 +388,7 @@ if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
                 ProjectRoot = $projectRoot
                 Configuration = @{
                     paths = @{ hemtt_config = '.hemtt/project.toml' }
-                    tools = @{ hemtt = @{ path = $mockExecutable } }
+                    tools = @{ hemtt = @{ path = $mockExecutable; version = '1.2.3' } }
                 }
                 Logger = $null
             }
@@ -405,6 +405,15 @@ if ($args -contains '--fail') { $global:LASTEXITCODE = 7 }
 
             $buildResult = & $descriptor.Invoke $context 'Build'
             $buildResult.Status | Should -Be 'Passed'
+            $buildResult.Data.Version | Should -Be '1.2.3'
+
+            $context.Configuration.tools.hemtt.version = '2.0.0'
+            $versionMismatch = & $descriptor.Invoke $context 'Build'
+            $versionMismatch.Status | Should -Be 'Failed'
+            $versionMismatch.Data.Version | Should -Be '1.2.3'
+            $versionMismatch.Data.ExpectedVersion | Should -Be '2.0.0'
+            $versionMismatch.Data.Output | Should -Match 'version mismatch'
+            $context.Configuration.tools.hemtt.version = '1.2.3'
             $buildResult.Data.Arguments | Should -Contain 'build'
             $buildResult.Data.Output | Should -Match 'Mock received: build'
             $buildResult.Data.Artifacts | Should -Contain (Join-Path $artifactDirectory 'test.pbo')
