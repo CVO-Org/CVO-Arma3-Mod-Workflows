@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "paths": {
+    "project_root": ".",
+    "hemtt_config": ".hemtt/project.toml",
+    "build_output": ".build",
+    "release_output": "release",
+    "report_output": ".arma3-workflows/reports"
+  },
+  "modules": {
+    "build": {"enabled": true},
+    "validation": {"enabled": true},
+    "testing": {"enabled": true},
+    "release": {"enabled": false},
+    "utilities": {"enabled": true}
+  },
+  "validation": {
+    "sqf": {"enabled": true, "severity": "error"},
+    "config": {"enabled": true, "severity": "error"},
+    "assets": {"enabled": true, "severity": "error"},
+    "dependencies": {"enabled": true, "severity": "warning"},
+    "package": {"enabled": true, "severity": "error"}
+  },
+  "testing": {"automated": {"enabled": true}, "in_game": {"enabled": true}},
+  "distribution": {
+    "github": {"enabled": true, "draft": false, "prerelease": false},
+    "steam": {"enabled": false}
+  }
+}
