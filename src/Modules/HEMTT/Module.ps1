@@ -219,6 +219,7 @@ function Invoke-A3WorkflowExternalProcess {
         $versionStandardError = ''
         $outputText = ''
         $versionMismatch = $false
+        $versionParseFailed = $false
         $timedOut = $false
         $timeoutSeconds = 600
         $processDurationMs = 0
@@ -279,6 +280,11 @@ function Invoke-A3WorkflowExternalProcess {
                 if ($Operation -eq 'Detect' -and $outputText -match '(?i)(?:HEMTT\s+)?v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
                     $version = $Matches[1]
                 }
+                if ($Operation -eq 'Detect' -and -not $version) {
+                    $versionParseFailed = $true
+                    $exitCode = 1
+                    $outputText = 'Unable to parse HEMTT version output.' + [Environment]::NewLine + $outputText
+                }
                 if ($Operation -eq 'Detect' -and $toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.version) {
                     $expectedVersion = ([string]$toolConfiguration.version).TrimStart('v')
                     if (-not $version -or $version -ne $expectedVersion) {
@@ -320,6 +326,7 @@ function Invoke-A3WorkflowExternalProcess {
             VersionStandardError = $versionStandardError
             VersionExitCode = [int]$versionExitCode
             VersionMismatch = $versionMismatch
+            VersionParseFailed = $versionParseFailed
             Arguments = $commandArguments
             ExitCode = [int]$exitCode
             Output = $outputText
