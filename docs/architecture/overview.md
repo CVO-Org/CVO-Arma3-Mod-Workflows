@@ -57,6 +57,8 @@ Each module declares its identifier, supported operations, configuration require
 
 HEMTT remains the authoritative build and packaging tool when a project uses it. Other validators are selected for checks that HEMTT does not already perform or where a separate tool provides a distinct diagnostic. SQF-VM and other optional tools must be capability-detected and explicitly configurable; they are not assumed to be installed in every project.
 
+See [Validation architecture](validation.md) for the validation pipeline, category ownership, normalized finding contract, and compatibility requirements.
+
 ## Execution environments
 
 - **Local:** Windows-first, PowerShell interface, with clear prerequisite checks.
