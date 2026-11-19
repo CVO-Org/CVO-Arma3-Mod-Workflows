@@ -20,6 +20,7 @@ The project follows Semantic Versioning once the first stable release is publish
 - Pester unit and integration coverage for core behavior and HEMTT process execution, failure handling, and artifact reporting.
 - Windows CI coverage for PowerShell 7 and a dedicated Windows PowerShell 5.1 compatibility smoke test covering HEMTT, SQF-VM validation/testing, and PBO package inspection.
 - Reusable Windows HEMTT GitHub Actions workflow with pinned HEMTT setup action, explicit framework-ref pin, operation inputs, and build artifact uploads.
+- Reusable Windows validation GitHub Actions workflow for explicit asset, config, dependency, SQF, and PBO validation manifests, with configurable module selection and fail-on-skipped policy.
 - Core, HEMTT, validation, and reusable workflow usage documentation.
 
 ### Notes
