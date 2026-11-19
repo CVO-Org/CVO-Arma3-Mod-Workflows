@@ -24,7 +24,7 @@
     "utilities": {"enabled": true}
   },
   "validation": {
-    "sqf": {"enabled": true, "severity": "error"},
+    "sqf": {"enabled": true, "severity": "error", "files": []},
     "config": {"enabled": true, "severity": "error", "required_classes": []},
     "assets": {"enabled": true, "severity": "error", "references": []},
     "dependencies": {"enabled": true, "severity": "warning", "config_files": [], "internal_addons": []},
