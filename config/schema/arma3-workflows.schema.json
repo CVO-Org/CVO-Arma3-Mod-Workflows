@@ -155,7 +155,14 @@
           }
         },
         "dependencies": {
-          "$ref": "#/$defs/checkToggle"
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "severity": { "type": "string", "enum": ["error", "warning"] },
+            "config_files": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "internal_addons": { "type": "array", "items": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" } }
+          }
         },
         "package": {
           "$ref": "#/$defs/checkToggle"
