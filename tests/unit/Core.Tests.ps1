@@ -403,6 +403,22 @@ Describe 'Arma3 Mod Workflows core' {
         $result.DurationMs | Should -BeGreaterThan 0
     }
 
+    It 'ignores PowerShell functions and aliases when discovering HEMTT on PATH' {
+        $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
+        Mock Get-Command {
+            [pscustomobject]@{ Name = $Name; CommandType = 'Function'; Source = 'MockFunction' }
+        }
+        $context = [pscustomobject]@{
+            ProjectRoot = ([IO.Path]::GetTempPath())
+            Configuration = @{ paths = @{}; tools = @{ hemtt = @{ required = $false } } }
+            Logger = $null
+        }
+        $result = & $descriptor.Invoke $context 'Detect'
+        $result.Status | Should -Be 'Skipped'
+        $result.Summary | Should -Match 'executable was not found'
+        $result.Warnings.Count | Should -Be 1
+    }
+
     It 'skips an unavailable optional HEMTT executable' {
         $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
         $context = [pscustomobject]@{
