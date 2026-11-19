@@ -205,6 +205,7 @@ Describe 'Arma3 Mod Workflows core' {
             $context.ProjectRoot | Should -Be (Resolve-Path $projectRoot).Path
             $context.Configuration.paths.build_output | Should -Be '.build'
             $context.Registry | Should -Not -BeNullOrEmpty
+            $context.Registry.Modules.ContainsKey('Build.HEMTT') | Should -BeTrue
             $context.Logger | Should -Not -BeNullOrEmpty
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
