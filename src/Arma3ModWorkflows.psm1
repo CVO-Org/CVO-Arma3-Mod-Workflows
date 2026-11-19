@@ -17,6 +17,7 @@ Export-ModuleMember -Function @(
     'Merge-A3WorkflowConfiguration',
     'New-A3WorkflowModuleRegistry',
     'Register-A3WorkflowModule',
+    'Import-A3WorkflowModules',
     'Resolve-A3WorkflowModuleOrder',
     'New-A3WorkflowModuleResult',
     'Invoke-A3WorkflowModules'
