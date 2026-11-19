@@ -179,18 +179,14 @@
             "artifacts": {
               "type": "array",
               "items": {
-                "oneOf": [
-                  { "type": "string", "minLength": 1 },
-                  {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": ["path"],
-                    "properties": {
-                      "path": { "type": "string", "minLength": 1 },
-                      "required_entries": { "type": "array", "items": { "type": "string", "minLength": 1 } }
-                    }
-                  }
-                ]
+                "type": ["string", "object"],
+                "minLength": 1,
+                "additionalProperties": false,
+                "required": ["path"],
+                "properties": {
+                  "path": { "type": "string", "minLength": 1 },
+                  "required_entries": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+                }
               }
             }
           }
