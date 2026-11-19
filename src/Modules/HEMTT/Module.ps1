@@ -1,3 +1,56 @@
+@{
+    Id = 'Build.HEMTT'
+    ConfigKey = 'build'
+    Version = '0.1.0'
+    Operations = @('Run', 'Detect', 'Check', 'Dev', 'Build', 'Release')
+    Invoke = {
+        param($Context, $Operation)
+
+        $started = [DateTime]::UtcNow
+        $projectRoot = [string]$Context.ProjectRoot
+        $toolConfiguration = $null
+        if ($Context.Configuration.tools -is [System.Collections.IDictionary] -and $Context.Configuration.tools.Contains('hemtt')) {
+            $toolConfiguration = $Context.Configuration.tools.hemtt
+        }
+
+        if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.Contains('enabled') -and $toolConfiguration.enabled -eq $false) {
+            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary 'HEMTT is disabled in tool configuration.' -StartedAt $started)
+        }
+
+        $executable = $null
+        if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.path) {
+            $configuredPath = [string]$toolConfiguration.path
+            if (-not [IO.Path]::IsPathRooted($configuredPath)) {
+                $configuredPath = Join-Path $projectRoot $configuredPath
+            }
+            if (Test-Path -LiteralPath $configuredPath -PathType Container) {
+                $configuredPath = Join-Path $configuredPath 'hemtt.exe'
+            }
+            if (Test-Path -LiteralPath $configuredPath -PathType Leaf) {
+                $executable = (Resolve-Path -LiteralPath $configuredPath).Path
+            }
+            else {
+                $diagnostic = @{ Message = 'Configured HEMTT executable does not exist.'; Path = $configuredPath }
+                if ($toolConfiguration.required -eq $true) {
+                    return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary "Configured HEMTT executable was not found: $configuredPath" -Errors @($diagnostic) -StartedAt $started)
+                }
+                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary "Configured HEMTT executable was not found: $configuredPath" -Warnings @($diagnostic) -StartedAt $started)
+            }
+        }
+        else {
+            foreach ($commandName in @('hemtt.exe', 'hemtt')) {
+                $command = Get-Command $commandName -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($command -and $command.Source) {
+                    $executable = $command.Source
+                    break
+                }
+            }
+        }
+
+        if (-not $executable) {
+            $diagnostic = @{ Message = 'HEMTT executable not found.'; Remediation = 'Set tools.hemtt.path or add hemtt.exe to PATH. Set tools.hemtt.required to true to make this a failure.' }
+            if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.required -eq $true) {
+                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT executable was not found. Configure tools.hemtt.path or add HEMTT to PATH.' -Errors @($diagnostic) -StartedAt $started)
 function Invoke-A3WorkflowExternalProcess {
     param(
         [Parameter(Mandatory = $true)][string]$FilePath,
@@ -77,59 +130,6 @@ function Invoke-A3WorkflowExternalProcess {
     }
 }
 
-@{
-    Id = 'Build.HEMTT'
-    ConfigKey = 'build'
-    Version = '0.1.0'
-    Operations = @('Run', 'Detect', 'Check', 'Dev', 'Build', 'Release')
-    Invoke = {
-        param($Context, $Operation)
-
-        $started = [DateTime]::UtcNow
-        $projectRoot = [string]$Context.ProjectRoot
-        $toolConfiguration = $null
-        if ($Context.Configuration.tools -is [System.Collections.IDictionary] -and $Context.Configuration.tools.Contains('hemtt')) {
-            $toolConfiguration = $Context.Configuration.tools.hemtt
-        }
-
-        if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.Contains('enabled') -and $toolConfiguration.enabled -eq $false) {
-            return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary 'HEMTT is disabled in tool configuration.' -StartedAt $started)
-        }
-
-        $executable = $null
-        if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.path) {
-            $configuredPath = [string]$toolConfiguration.path
-            if (-not [IO.Path]::IsPathRooted($configuredPath)) {
-                $configuredPath = Join-Path $projectRoot $configuredPath
-            }
-            if (Test-Path -LiteralPath $configuredPath -PathType Container) {
-                $configuredPath = Join-Path $configuredPath 'hemtt.exe'
-            }
-            if (Test-Path -LiteralPath $configuredPath -PathType Leaf) {
-                $executable = (Resolve-Path -LiteralPath $configuredPath).Path
-            }
-            else {
-                $diagnostic = @{ Message = 'Configured HEMTT executable does not exist.'; Path = $configuredPath }
-                if ($toolConfiguration.required -eq $true) {
-                    return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary "Configured HEMTT executable was not found: $configuredPath" -Errors @($diagnostic) -StartedAt $started)
-                }
-                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary "Configured HEMTT executable was not found: $configuredPath" -Warnings @($diagnostic) -StartedAt $started)
-            }
-        }
-        else {
-            foreach ($commandName in @('hemtt.exe', 'hemtt')) {
-                $command = Get-Command $commandName -ErrorAction SilentlyContinue | Select-Object -First 1
-                if ($command -and $command.Source) {
-                    $executable = $command.Source
-                    break
-                }
-            }
-        }
-
-        if (-not $executable) {
-            $diagnostic = @{ Message = 'HEMTT executable not found.'; Remediation = 'Set tools.hemtt.path or add hemtt.exe to PATH. Set tools.hemtt.required to true to make this a failure.' }
-            if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.required -eq $true) {
-                return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Failed -Summary 'HEMTT executable was not found. Configure tools.hemtt.path or add HEMTT to PATH.' -Errors @($diagnostic) -StartedAt $started)
             }
             return (New-A3WorkflowModuleResult -Module 'Build.HEMTT' -Operation $Operation -Status Skipped -Summary 'HEMTT executable was not found. Configure tools.hemtt.path or add HEMTT to PATH.' -Warnings @($diagnostic) -StartedAt $started)
         }
