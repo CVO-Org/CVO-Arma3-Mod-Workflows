@@ -1455,7 +1455,8 @@ Describe 'Validation.Package module' {
         New-Item -ItemType Directory -Path (Join-Path $projectRoot 'release') -Force | Out-Null
         try {
             [IO.File]::WriteAllBytes((Join-Path $projectRoot 'release/truncated.pbo'), [byte[]](1,2,3,4,5))
-            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ package = @{ artifacts = @('release/missing.pbo', 'release/truncated.pbo', '../outside.pbo', 'release/not-a-pbo.txt') } } } }
+            Write-TestPbo -Path (Join-Path $projectRoot 'release/traversal.pbo') -EntryName '..\outside.txt'
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ package = @{ artifacts = @('release/missing.pbo', 'release/truncated.pbo', 'release/traversal.pbo', '../outside.pbo', 'release/not-a-pbo.txt') } } } }
             $result = & $packageDescriptor.Invoke $context 'Validate'
             $result.Status | Should -Be 'Failed'
             $result.Errors.Id | Should -Contain 'PACKAGE_NOT_FOUND'
