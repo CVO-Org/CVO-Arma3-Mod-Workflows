@@ -251,6 +251,57 @@ Describe 'Arma3 Mod Workflows core' {
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'uses module result statuses to determine CLI exit codes' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        $modulesRoot = Join-Path $repositoryRoot 'src/Modules'
+        $modulesRootExisted = Test-Path -LiteralPath $modulesRoot -PathType Container
+        $failureDirectory = Join-Path $modulesRoot 'TestFailure'
+        $warningDirectory = Join-Path $modulesRoot 'TestWarning'
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        New-Item -ItemType Directory -Path $failureDirectory -Force | Out-Null
+        New-Item -ItemType Directory -Path $warningDirectory -Force | Out-Null
+        try {
+            @'
+@{
+    Id = 'Test.Failure'
+    ConfigKey = 'testfailure'
+    Invoke = {
+        param($Context, $Operation)
+        throw 'Intentional CLI failure test.'
+    }
+}
+'@ | Set-Content -LiteralPath (Join-Path $failureDirectory 'Module.ps1') -Encoding UTF8
+            @'
+@{
+    Id = 'Test.Warning'
+    ConfigKey = 'testwarning'
+    Invoke = {
+        param($Context, $Operation)
+        [pscustomobject]@{ Module = 'Test.Warning'; Operation = $Operation; Status = 'Warning'; Summary = 'Intentional warning test.' }
+    }
+}
+'@ | Set-Content -LiteralPath (Join-Path $warningDirectory 'Module.ps1') -Encoding UTF8
+            '{"schema_version":1,"modules":{"testfailure":{"enabled":true},"testwarning":{"enabled":true}}}' | Set-Content -LiteralPath (Join-Path $projectRoot 'arma3-workflows.json') -Encoding UTF8
+            $cli = Join-Path $repositoryRoot 'src/Invoke-Arma3ModWorkflows.ps1'
+            $pwsh = Join-Path $PSHOME 'pwsh.exe'
+
+            $null = @(& $pwsh -NoProfile -File $cli -ProjectRoot $projectRoot -Module 'Test.Failure' 2>&1)
+            $LASTEXITCODE | Should -Be 1
+
+            $null = @(& $pwsh -NoProfile -File $cli -ProjectRoot $projectRoot -Module 'Test.Warning' 2>&1)
+            $LASTEXITCODE | Should -Be 0
+
+            $null = @(& $pwsh -NoProfile -File $cli -ProjectRoot $projectRoot -Module 'Test.Warning' -FailOnWarning 2>&1)
+            $LASTEXITCODE | Should -Be 1
+        }
+        finally {
+            Remove-Item -LiteralPath $failureDirectory -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $warningDirectory -Recurse -Force -ErrorAction SilentlyContinue
+            if (-not $modulesRootExisted) { Remove-Item -LiteralPath $modulesRoot -Force -ErrorAction SilentlyContinue }
+            Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'returns exit code 2 when a requested module is not registered' {
         $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
