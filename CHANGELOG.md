@@ -14,6 +14,7 @@ The project follows Semantic Versioning once the first stable release is publish
 - Initial `Validation.Assets` module for explicit project-relative asset reference manifests, including missing-file and path-escape findings.
 - Initial `Validation.Config` module for explicit required config class declarations, with comment/string filtering, path-safety checks, severity handling, and structured findings.
 - Initial `Validation.Dependencies` module for `CfgPatches` addon declarations, literal `requiredAddons[]` references, duplicate detection, and explicit internal-addon consistency checks.
+- Initial `Validation.SQF` adapter for SQFLint with explicit source manifests, JSON diagnostic normalization, process timeouts, and optional-tool handling.
 - Pester unit and integration coverage for core behavior and HEMTT process execution, failure handling, and artifact reporting.
 - Windows CI coverage for PowerShell 7 and a dedicated Windows PowerShell 5.1 HEMTT compatibility smoke test.
 - Core, HEMTT, and validation architecture documentation.
