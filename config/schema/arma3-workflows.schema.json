@@ -179,6 +179,16 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "sqfvm": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "files": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "config_files": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "max_runtime_ms": { "type": "integer" }
+          }
+        },
         "automated": {
           "$ref": "#/$defs/checkToggle"
         },
