@@ -17,7 +17,7 @@ The framework is designed to integrate with existing repositories without imposi
 
 ```text
 .github/
-  workflows/          Reusable GitHub Actions workflows
+  workflows/          Reusable GitHub Actions workflows (files must live directly here)
   ISSUE_TEMPLATE/
 config/
   defaults/           Framework defaults
@@ -33,14 +33,13 @@ tests/
   unit/
   integration/
 workflows/
-  reusable/           Versioned reusable workflow definitions
 ```
 
 Consuming projects may place the submodule wherever convenient and may keep their own source, build, and release directories.
 
 ## Getting started
 
-The framework is under active development. The configuration contract and module interfaces are being established first. Installation instructions and executable commands will be added as those components become available.
+Reusable workflow files live directly in `.github/workflows/`, as required by GitHub Actions; the separate top-level `workflows/` directory is intentionally not used for callable workflow definitions. The framework is under active development. The configuration contract and module interfaces are being established first. Installation instructions and executable commands will be added as those components become available.
 
 A consuming project will eventually add the framework as a Git submodule, pin it to a release tag, and provide an `arma3-workflows.yml` file at its repository root (or pass an explicit configuration path).
 
