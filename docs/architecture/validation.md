@@ -26,7 +26,7 @@ The configuration already reserves these categories under `validation`:
 | `config` | Config-specific structural and reference checks not covered by HEMTT | Framework checks and optional parsers |
 | `assets` | Missing or incorrectly referenced project assets | Framework checks; initial implementation validates an explicit project-relative reference manifest |
 | `dependencies` | Declared addon/mod dependency consistency | Framework checks |
-| `package` | Inspection of an existing build/package artifact | Framework checks and format-aware tools |
+| `package` | Inspection of an existing build/package artifact | Initial framework-owned structural PBO inspection through `Validation.Package` |
 
 Each category can be disabled independently. The existing `severity` setting controls whether a finding is treated as an error or warning. A category disabled by configuration is not a passing check; it is reported as skipped or omitted with an explicit reason.
 
