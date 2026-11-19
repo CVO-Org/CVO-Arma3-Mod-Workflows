@@ -243,6 +243,12 @@
             "type": "string"
           }
         },
+        "check_arguments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "timeout_seconds": {
           "type": "integer",
           "default": 600
