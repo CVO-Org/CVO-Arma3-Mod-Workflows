@@ -875,3 +875,106 @@ Describe 'Validation.Assets module' {
     }
 }
 
+
+Describe 'Validation.Config module' {
+    BeforeAll {
+        $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        . (Join-Path $repositoryRoot 'src/Core/ModuleManager.ps1')
+        . (Join-Path $repositoryRoot 'src/Core/Configuration.ps1')
+        $configDescriptor = & (Join-Path $repositoryRoot 'src/Modules/ValidationConfig/Module.ps1')
+    }
+
+    It 'passes when required classes are declared in project config files' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Config Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'addons/example') -Force | Out-Null
+        @'
+class CfgPatches
+{
+    class Example_Addon
+    {
+        units[] = {};
+    };
+};
+'@ | Set-Content -LiteralPath (Join-Path $projectRoot 'addons/example/config.cpp')
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ config = @{ enabled = $true; severity = 'error'; required_classes = @(@{ path = 'addons/example/config.cpp'; name = 'CfgPatches' }, @{ path = 'addons/example/config.cpp'; name = 'Example_Addon' }) } } } }
+            $result = & $configDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Passed'
+            $result.Data.CheckedCount | Should -Be 2
+            $result.Data.Findings.Count | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'does not mistake class-like text in comments or strings for declarations' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Config Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        @'
+// class FakeComment
+/*
+class FakeBlockComment
+*/
+class RealClass
+{
+    displayName = "class FakeString {";
+};
+'@ | Set-Content -LiteralPath (Join-Path $projectRoot 'config.cpp')
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ config = @{ required_classes = @(@{ path = 'config.cpp'; name = 'FakeComment' }, @{ path = 'config.cpp'; name = 'FakeBlockComment' }, @{ path = 'config.cpp'; name = 'FakeString' }) } } } }
+            $result = & $configDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Failed'
+            $result.Errors.Count | Should -Be 3
+            $result.Errors.Id | Should -Contain 'CONFIG_CLASS_NOT_FOUND'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'reports missing config files and missing class declarations' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Config Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        'class PresentClass { };' | Set-Content -LiteralPath (Join-Path $projectRoot 'present.cpp')
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ config = @{ required_classes = @(@{ path = 'missing.cpp'; name = 'MissingFileClass' }, @{ path = 'present.cpp'; name = 'MissingClass' }) } } } }
+            $result = & $configDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Failed'
+            $result.Errors.Id | Should -Contain 'CONFIG_FILE_NOT_FOUND'
+            $result.Errors.Id | Should -Contain 'CONFIG_CLASS_NOT_FOUND'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'supports warning severity and rejects paths outside the project root' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Config Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ config = @{ severity = 'warning'; required_classes = @(@{ path = 'missing.cpp'; name = 'MissingClass' }, @{ path = '../outside.cpp'; name = 'OutsideClass' }) } } } }
+            $result = & $configDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Warning'
+            $result.Errors.Count | Should -Be 0
+            $result.Warnings.Id | Should -Contain 'CONFIG_FILE_NOT_FOUND'
+            $result.Warnings.Id | Should -Contain 'CONFIG_PATH_OUTSIDE_PROJECT'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'skips when config validation is disabled or no class expectations are configured' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("Config Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $disabled = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ config = @{ enabled = $false } } } }
+            (& $configDescriptor.Invoke $disabled 'Validate').Status | Should -Be 'Skipped'
+            $empty = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ config = @{ required_classes = @() } } } }
+            $result = & $configDescriptor.Invoke $empty 'Validate'
+            $result.Status | Should -Be 'Skipped'
+            $result.Warnings.Count | Should -Be 1
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'validates required config class entries against the configuration schema' {
+        $valid = @{ schema_version = 1; validation = @{ config = @{ enabled = $true; severity = 'warning'; required_classes = @(@{ path = 'addons/example/config.cpp'; name = 'CfgPatches' }) } } }
+        (Test-A3WorkflowConfiguration -Configuration $valid).IsValid | Should -BeTrue
+        $invalid = @{ schema_version = 1; validation = @{ config = @{ required_classes = @(@{ path = 'config.cpp'; name = 42 }) } } }
+        (Test-A3WorkflowConfiguration -Configuration $invalid).IsValid | Should -BeFalse
+    }
+}
