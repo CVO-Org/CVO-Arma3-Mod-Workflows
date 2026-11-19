@@ -1394,3 +1394,86 @@ exit 0
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
+
+
+Describe 'Validation.Package module' {
+    BeforeAll {
+        $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        . (Join-Path $repositoryRoot 'src/Core/ModuleManager.ps1')
+        $packageDescriptor = & (Join-Path $repositoryRoot 'src/Modules/ValidationPackage/Module.ps1')
+
+        function Write-TestPbo {
+            param([string]$Path, [string]$EntryName = 'config.cpp', [byte[]]$Payload = [Text.Encoding]::ASCII.GetBytes('abc'))
+            $bytes = New-Object 'System.Collections.Generic.List[byte]'
+            $bytes.AddRange([Text.Encoding]::ASCII.GetBytes($EntryName))
+            $bytes.Add([byte]0)
+            $bytes.AddRange([byte[]](0,0,0,0))
+            $bytes.AddRange([BitConverter]::GetBytes([uint32]$Payload.Length))
+            $bytes.AddRange([byte[]](0,0,0,0))
+            $bytes.AddRange([byte[]](0,0,0,0))
+            $bytes.AddRange([BitConverter]::GetBytes([uint32]$Payload.Length))
+            $bytes.Add([byte]0)
+            $bytes.AddRange([byte[]](0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+            $bytes.AddRange($Payload)
+            [IO.File]::WriteAllBytes($Path, $bytes.ToArray())
+        }
+    }
+
+    It 'validates a structurally valid PBO and required entries' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("PBO Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'release') -Force | Out-Null
+        try {
+            Write-TestPbo -Path (Join-Path $projectRoot 'release/example.pbo')
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ package = @{ artifacts = @(@{ path = 'release/example.pbo'; required_entries = @('config.cpp') }) } } } }
+            $result = & $packageDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Passed'
+            $result.Data.CheckedCount | Should -Be 1
+            $result.Data.Packages[0].EntryCount | Should -Be 1
+            $result.Data.Packages[0].Entries | Should -Contain 'config.cpp'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'reports missing, malformed, and truncated package artifacts' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("PBO Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'release') -Force | Out-Null
+        try {
+            [IO.File]::WriteAllBytes((Join-Path $projectRoot 'release/truncated.pbo'), [byte[]](1,2,3,4,5))
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ package = @{ artifacts = @('release/missing.pbo', 'release/truncated.pbo', '../outside.pbo', 'release/not-a-pbo.txt') } } } }
+            $result = & $packageDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Failed'
+            $result.Errors.Id | Should -Contain 'PACKAGE_NOT_FOUND'
+            $result.Errors.Id | Should -Contain 'PACKAGE_INVALID_PBO'
+            $result.Errors.Id | Should -Contain 'PACKAGE_PATH_OUTSIDE_PROJECT'
+            $result.Errors.Id | Should -Contain 'PACKAGE_INVALID_EXTENSION'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'reports missing required entries using configured warning severity' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("PBO Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $projectRoot 'release') -Force | Out-Null
+        try {
+            Write-TestPbo -Path (Join-Path $projectRoot 'release/example.pbo')
+            $context = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ package = @{ severity = 'warning'; artifacts = @(@{ path = 'release/example.pbo'; required_entries = @('config.cpp', 'stringtable.xml') }) } } } }
+            $result = & $packageDescriptor.Invoke $context 'Validate'
+            $result.Status | Should -Be 'Warning'
+            $result.Warnings.Id | Should -Contain 'PACKAGE_REQUIRED_ENTRY_MISSING'
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'skips empty manifests and validates package configuration schema' {
+        $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ("PBO Validation " + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+        try {
+            $empty = [pscustomobject]@{ ProjectRoot = $projectRoot; Configuration = @{ validation = @{ package = @{ artifacts = @() } } } }
+            (& $packageDescriptor.Invoke $empty 'Validate').Status | Should -Be 'Skipped'
+            $valid = @{ schema_version = 1; validation = @{ package = @{ enabled = $true; severity = 'error'; artifacts = @('release/example.pbo', @{ path = 'release/mod.pbo'; required_entries = @('config.cpp') }) } } }
+            (Test-A3WorkflowConfiguration -Configuration $valid).IsValid | Should -BeTrue
+            $invalid = @{ schema_version = 1; validation = @{ package = @{ artifacts = @(@{ required_entries = @('config.cpp') }) } } }
+            (Test-A3WorkflowConfiguration -Configuration $invalid).IsValid | Should -BeFalse
+        }
+        finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
