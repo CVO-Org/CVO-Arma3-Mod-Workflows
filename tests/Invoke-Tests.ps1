@@ -6,7 +6,8 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $coreRoot = Join-Path $repositoryRoot 'src/Core'
 $parseErrors = New-Object System.Collections.Generic.List[string]
 
-Get-ChildItem -LiteralPath $coreRoot -Filter '*.ps1' -File -Recurse | ForEach-Object {
+$sourceRoot = Join-Path $repositoryRoot 'src'
+Get-ChildItem -LiteralPath $sourceRoot -Filter '*.ps1' -File -Recurse | ForEach-Object {
     $tokens = $null
     $errors = $null
     [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)
