@@ -430,7 +430,16 @@ Describe 'Arma3 Mod Workflows core' {
             @'
 $global:LASTEXITCODE = 0
 Add-Content -LiteralPath (Join-Path $PSScriptRoot 'invocations.log') -Value ($args -join ' ')
-if ($args -contains '--version') { Write-Output '1.2.3' }
+if ($args -contains '--version') {
+    $versionModePath = Join-Path $PSScriptRoot 'version-mode.txt'
+    $versionMode = if (Test-Path -LiteralPath $versionModePath) { (Get-Content -LiteralPath $versionModePath -Raw).Trim() } else { 'normal' }
+    switch ($versionMode) {
+        'fail' { [Console]::Error.WriteLine('Mock version probe failed'); exit 9 }
+        'unparseable' { Write-Output 'development build'; exit 0 }
+        'sleep' { Start-Sleep -Seconds 3; Write-Output '1.2.3'; exit 0 }
+        default { Write-Output '1.2.3' }
+    }
+}
 else { Write-Output 'HEMTT v1.2.3' }
 Write-Output ("Mock received: " + ($args -join ' '))
 if ($args -contains 'build') {
@@ -484,6 +493,25 @@ if ($args -contains '--fail') { exit 7 }
             $buildResult.Data.StandardOutput | Should -Match 'value with spaces'
             $buildResult.Data.StandardError | Should -Match 'Mock stderr'
 
+            $versionModePath = Join-Path $projectRoot 'version-mode.txt'
+            $invocationLog = Join-Path $projectRoot 'invocations.log'
+            $buildInvocationsBeforeProbeFailures = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' })
+
+            'fail' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
+            $versionProbeFailure = & $descriptor.Invoke $context 'Build'
+            $versionProbeFailure.Status | Should -Be 'Failed'
+            $versionProbeFailure.Data.VersionExitCode | Should -Be 9
+            $versionProbeFailure.Data.Output | Should -Match 'version query failed'
+            @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' }).Count | Should -Be $buildInvocationsBeforeProbeFailures.Count
+
+            'unparseable' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
+            $versionProbeUnparseable = & $descriptor.Invoke $context 'Build'
+            $versionProbeUnparseable.Status | Should -Be 'Failed'
+            $versionProbeUnparseable.Data.VersionMismatch | Should -BeTrue
+            $versionProbeUnparseable.Data.Output | Should -Match 'Unable to determine HEMTT version'
+            @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' }).Count | Should -Be $buildInvocationsBeforeProbeFailures.Count
+
+            'normal' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
             $context.Configuration.tools.hemtt.version = '2.0.0'
             $invocationLog = Join-Path $projectRoot 'invocations.log'
             $invocationsBeforeMismatch = @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' })
@@ -535,8 +563,16 @@ if ($args -contains '--fail') { exit 7 }
             $failureResult.Data.ExitCode | Should -Be 7
             $failureResult.Data.Output | Should -Match '--fail'
 
-            $context.Configuration.tools.hemtt.arguments = @('--sleep')
+            'sleep' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
             $context.Configuration.tools.hemtt.timeout_seconds = 1
+            $versionProbeTimeout = & $descriptor.Invoke $context 'Build'
+            $versionProbeTimeout.Status | Should -Be 'Failed'
+            $versionProbeTimeout.Data.TimedOut | Should -BeTrue
+            $versionProbeTimeout.Data.VersionExitCode | Should -Be 124
+            $versionProbeTimeout.Data.Output | Should -Match 'version query timed out'
+
+            'normal' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
+            $context.Configuration.tools.hemtt.arguments = @('--sleep')
             $timeoutResult = & $descriptor.Invoke $context 'Build'
             $timeoutResult.Status | Should -Be 'Failed'
             $timeoutResult.Data.TimedOut | Should -BeTrue
