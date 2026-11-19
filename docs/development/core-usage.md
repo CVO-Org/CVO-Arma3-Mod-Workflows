@@ -164,6 +164,39 @@ The consuming project must configure the manifests required by its selected vali
 
 The workflow requests only `contents: read`. It does not build, run Arma 3, publish releases, or require publishing secrets.
 
+
+## Reusable SQF-VM test workflow
+
+The repository provides a callable Windows runtime-test workflow at `.github/workflows/test.yml`. A consuming project can call it from its own workflow:
+
+    name: Mod tests
+
+    on:
+      push:
+        branches: [main]
+      pull_request:
+
+    jobs:
+      sqfvm:
+        uses: SkippieDippie/Arma3-Mod-Workflows/.github/workflows/test.yml@YOUR_FRAMEWORK_REF
+        with:
+          framework-ref: YOUR_FRAMEWORK_REF
+          sqfvm-version: v2026.04.03-ed9f5f5
+
+Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The workflow separately installs the selected SQF-VM release from its official GitHub release archive.
+
+Inputs:
+
+- `framework-ref`: required immutable framework tag or commit SHA.
+- `sqfvm-version`: SQF-VM release tag to install (default `v2026.04.03-ed9f5f5`).
+- `project-root`: consuming project directory relative to the caller workspace (default `.`).
+- `config-path`: optional framework configuration path relative to project root.
+- `fail-on-skipped`: fail if no test scripts run or SQF-VM execution is skipped (default `true`).
+
+The consuming project must configure `testing.sqfvm.files` with explicit project-relative `.sqf` test scripts. Optional config inputs are listed in `testing.sqfvm.config_files`. Test scripts must implement meaningful assertions and set a nonzero exit code on failure. A successful process exit alone cannot prove that assertions were actually performed.
+
+Each configured test script runs in its own SQF-VM process. This is SQF-VM runtime testing, not an Arma 3 engine test; engine commands and game integration still require in-game validation.
+
 ## Current limitations
 
 - YAML requires `powershell-yaml`; JSON does not.
