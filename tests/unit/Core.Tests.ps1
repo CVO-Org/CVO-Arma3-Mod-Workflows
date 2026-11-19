@@ -73,6 +73,11 @@ Describe 'Arma3 Mod Workflows core' {
         (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeTrue
     }
 
+    It 'rejects malformed HEMTT version pins' {
+        $config = @{ schema_version = 1; tools = @{ hemtt = @{ version = '1.21' } } }
+        (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
+    }
+
     It 'rejects non-positive HEMTT process timeouts at execution time' {
         $descriptor = & (Join-Path $repositoryRoot 'src/Modules/HEMTT/Module.ps1')
         $projectRoot = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
@@ -505,6 +510,12 @@ if ($args -contains '--fail') { exit 7 }
             @(Get-Content -LiteralPath $invocationLog | Where-Object { $_ -ne '--version' }).Count | Should -Be $buildInvocationsBeforeProbeFailures.Count
 
             'unparseable' | Set-Content -LiteralPath $versionModePath -Encoding UTF8
+            $context.Configuration.tools.hemtt.version = $null
+            $detectUnparseable = & $descriptor.Invoke $context 'Detect'
+            $detectUnparseable.Status | Should -Be 'Failed'
+            $detectUnparseable.Data.VersionParseFailed | Should -BeTrue
+            $detectUnparseable.Data.Output | Should -Match 'Unable to parse HEMTT version output'
+            $context.Configuration.tools.hemtt.version = '1.2.3'
             $versionProbeUnparseable = & $descriptor.Invoke $context 'Build'
             $versionProbeUnparseable.Status | Should -Be 'Failed'
             $versionProbeUnparseable.Data.VersionMismatch | Should -BeTrue
