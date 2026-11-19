@@ -8,7 +8,10 @@ The project follows Semantic Versioning once the first stable release is publish
 
 ### Added
 - Initial repository foundation and architecture documentation.
-- Initial version 1 project configuration JSON Schema.
+- Initial version 1 project configuration JSON Schema and baseline defaults.
+- PowerShell core for configuration loading, structured JSONL logging, module registration, dependency ordering, and normalized execution results.
+- Pester unit tests and a Windows GitHub Actions test workflow.
+- Core usage documentation.
 - Initial module execution contract and development standards.
 
 ### Notes
