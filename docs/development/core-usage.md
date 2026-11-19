@@ -204,6 +204,38 @@ Run it with:
 
 
 
+
+## PBO package validation
+
+The `Validation.Package` module inspects explicitly configured PBO build artifacts. It does not assume a particular build-output directory and does not invoke HEMTT; run it after the build step has produced the package.
+
+Example configuration:
+
+    {
+      "schema_version": 1,
+      "validation": {
+        "package": {
+          "enabled": true,
+          "severity": "error",
+          "artifacts": [
+            "releases/example.pbo",
+            {
+              "path": ".hemttout/release/example.pbo",
+              "required_entries": ["config.cpp", "stringtable.xml"]
+            }
+          ]
+        }
+      }
+    }
+
+Each artifact path must be project-relative, remain inside the project root, exist, and use the `.pbo` extension. The validator inspects the PBO header and entry metadata, verifies that declared data sizes fit within the artifact, and accepts an optional 20-byte SHA-1 trailer by length only. Required entries are matched case-insensitively with slash normalization. Set severity to `warning` to report findings without failing the module. An empty artifact list is `Skipped`, not `Passed`.
+
+This is not a full PBO extractor or Arma package-load test. It does not decrypt or decompress entries, cryptographically verify the optional checksum, validate signatures, or prove engine compatibility. Those checks still require the appropriate packaging tools and in-game validation.
+
+Run it after building:
+
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Validate -Module Validation.Package
+
 ## SQF-VM automated tests
 
 The `Testing.SQFVM` module executes only the scripts explicitly listed in `testing.sqfvm.files`. It validates the complete test and config-file manifest before launching any process, then runs one fresh SQF-VM process per script, optionally loading configured `.cpp` config inputs first. It captures stdout, stderr, exit code, duration, and timeout state. The process timeout is controlled by `tools.sqfvm.timeout_seconds`; `testing.sqfvm.max_runtime_ms` optionally supplies SQF-VM's own per-process runtime limit (zero means unlimited inside SQF-VM, while the process timeout still applies). `tools.sqfvm.arguments` may add other SQF-VM options, but runner-controlled options (`--automated`, `--suppress-welcome`, `--no-execute-print`, `--parse-only`, `--input-sqf`, `--input-config`, and `--max-runtime`) are reserved and rejected there so additional arguments cannot silently change execution mode.
