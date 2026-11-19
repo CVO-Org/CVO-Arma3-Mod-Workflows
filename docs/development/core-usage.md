@@ -130,3 +130,36 @@ Paths must be project-relative and remain inside the project root. The class che
 Run it with:
 
     ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Validate -Module Validation.Config
+
+
+## Addon dependency validation module
+
+The framework discovers `Validation.Dependencies` when `modules.validation.enabled` is true. It reads explicitly configured config source files, collects addon classes declared in `CfgPatches`, and inspects their `requiredAddons[]` arrays.
+
+Configure the files to inspect and identify addon names owned by your project:
+
+    {
+      "schema_version": 1,
+      "validation": {
+        "dependencies": {
+          "enabled": true,
+          "severity": "warning",
+          "config_files": [
+            "addons/core/config.cpp",
+            "addons/vehicles/config.cpp"
+          ],
+          "internal_addons": [
+            "Example_Core",
+            "Example_Vehicles"
+          ]
+        }
+      }
+    }
+
+The validator detects duplicate addon class declarations and internal addon names that are missing from the configured source files. A `requiredAddons[]` entry is checked as an internal dependency only when its name appears in `internal_addons`; other names are treated as external (including Arma engine and third-party mod dependencies) and are not reported missing. Paths must be project-relative and remain inside the project root. Empty `config_files` is reported as `Skipped`, not `Passed`.
+
+The initial implementation reads literal `CfgPatches` declarations. It does not evaluate preprocessor macros or conditional compilation, and it does not replace HEMTT's config checks.
+
+Run it with:
+
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Validate -Module Validation.Dependencies
