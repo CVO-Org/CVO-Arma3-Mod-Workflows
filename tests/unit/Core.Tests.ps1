@@ -29,6 +29,44 @@ Describe 'Arma3 Mod Workflows core' {
         (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
     }
 
+    It 'accepts the complete framework defaults against the JSON Schema' {
+        $defaultsPath = Join-Path $repositoryRoot 'config/defaults/configuration.json'
+        $defaults = Read-A3WorkflowConfigurationFile -Path $defaultsPath
+        (Test-A3WorkflowConfiguration -Configuration $defaults).IsValid | Should -BeTrue
+    }
+
+    It 'rejects unknown nested properties' {
+        $config = @{ schema_version = 1; paths = @{ build_output = '.build'; unexpected = $true } }
+        $result = Test-A3WorkflowConfiguration -Configuration $config
+        $result.IsValid | Should -BeFalse
+        ($result.Errors -join ' ') | Should -Match 'paths contains unknown property'
+    }
+
+    It 'rejects malformed semantic versions' {
+        $config = @{ schema_version = 1; project = @{ version = '1.2' } }
+        (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
+    }
+
+    It 'rejects invalid module toggle types' {
+        $config = @{ schema_version = 1; modules = @{ build = @{ enabled = 'yes' } } }
+        (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
+    }
+
+    It 'rejects invalid Steam Workshop identifiers' {
+        $config = @{ schema_version = 1; distribution = @{ steam = @{ enabled = $true; workshop_id = 'abc' } } }
+        (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
+    }
+
+    It 'rejects invalid Steam visibility values' {
+        $config = @{ schema_version = 1; distribution = @{ steam = @{ visibility = 'everyone' } } }
+        (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
+    }
+
+    It 'rejects non-string tool arguments' {
+        $config = @{ schema_version = 1; tools = @{ hemtt = @{ arguments = @('--release', 42) } } }
+        (Test-A3WorkflowConfiguration -Configuration $config).IsValid | Should -BeFalse
+    }
+
     It 'orders dependencies before dependent modules' {
         $registry = New-A3WorkflowModuleRegistry
         Register-A3WorkflowModule -Registry $registry -Id 'Core.First' -Invoke { }
