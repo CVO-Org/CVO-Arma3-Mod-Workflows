@@ -38,6 +38,11 @@ on:
         type: boolean
         default: false
 
+secrets:
+  framework-token:
+    description: Fine-grained token with contents:read access to the private framework repository
+    required: true
+
 permissions:
   contents: read
 
@@ -55,6 +60,7 @@ jobs:
           repository: SkippieDippie/Arma3-Mod-Workflows
           ref: ${{ inputs['framework-ref'] }}
           path: .arma3-workflows
+          token: ${{ secrets.framework-token }}
           persist-credentials: false
 
       - name: Set up HEMTT
