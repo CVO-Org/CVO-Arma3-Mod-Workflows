@@ -2,84 +2,50 @@
 
 ## Goals
 
-The reusable release workflow at .github/workflows/release.yml coordinates publication of one HEMTT release to one or both supported destinations:
+The reusable workflow at `.github/workflows/release.yml` owns the release pipeline for consuming Arma 3 mods:
 
-- GitHub Releases
-- An existing Arma 3 Steam Workshop item
+- check out the tagged project source;
+- install the configured HEMTT version;
+- update the project's version header and generate Workshop `meta.cpp`;
+- run `hemtt release --no-archive`;
+- validate and package the release directory;
+- attach the ZIP to the existing GitHub Release;
+- upload the release directory to an existing Steam Workshop item using `arma-actions/workshop-upload`;
+- publish the GitHub Release after successful uploads when requested.
 
-It is not a distributed transaction. The workflow makes partial completion visible and supports retrying failed publication jobs without rebuilding.
+Consuming repositories provide only variant metadata and protected Steam credentials. They do not need to maintain their own packaging or publishing steps.
 
-## Release invariants
+## Release inputs
 
-1. The workflow must be triggered by pushing a semantic-version tag that already exists in the consuming repository.
-2. The tag must resolve to the exact commit that triggered the workflow.
-3. HEMTT release runs once per workflow run.
-4. One prepared payload is shared by all enabled destinations.
-5. The payload contains a ZIP, SHA-256 checksum, content manifest, and the exact Workshop content directory.
-6. The GitHub Release remains a draft until every enabled destination succeeds.
-7. The workflow summary fails unless preflight, build, and every enabled destination complete successfully.
-8. Reruns of failed jobs use the same run-scoped artifact; the artifact name deliberately excludes github.run_attempt.
+The workflow accepts project-relative paths for the version header and `meta.cpp`, the HEMTT version, the release tag, Workshop item ID and display name, release folder prefix, destination toggles, and whether this invocation should finalize the GitHub Release.
 
-## Job graph
+The version header is expected to contain exactly one `#define MAJOR`, `#define MINOR`, and `#define PATCH`. The workflow derives those values from a semantic-version tag. A leading `v`, prerelease suffixes, build metadata, and the project's legacy `.RC.` suffix are accepted; the numeric major/minor/patch components are written to the header.
 
-~~~text
-preflight
-   |
-  build
-   |---------------------|
-   |                     |
-github-draft        steam-publish
-   |                     |
-   |----------+----------|
-              |
-       github-publish
-              |
-       release-status
-~~~
+The generated `meta.cpp` contains protocol version, Workshop item ID, display name, and a fresh UTC timestamp.
 
-The GitHub draft and Steam publication jobs run independently after the build. The final GitHub publication job runs only when GitHub publication is enabled and every enabled destination has succeeded. The status job always runs and marks the overall workflow failed if an enabled destination did not finish.
+## Steam credentials and prerequisites
 
-GitHub-only and Steam-only releases are supported. At least one destination must be enabled.
+Steam publishing uses the existing `arma-actions/workshop-upload@v1` action. The consuming repository must define:
 
-## Artifact construction and integrity
+- `STEAM_USERNAME`
+- `STEAM_PASSWORD`
 
-The build job requires .hemttout/release/addons to exist and contain at least one PBO. It stages the release folder under release-payload/workshop-content, creates a ZIP from that staged directory, and records:
+Pass them to the reusable workflow as `secrets.steam_username` and `secrets.steam_password`. The workflow checks that both are present when Steam publishing is enabled. Do not put credentials in project configuration or workflow inputs.
 
-- release tag and source commit;
-- archive filename and SHA-256 digest;
-- PBO count;
-- each content file's relative path, size, and SHA-256 digest.
+The target Workshop item must already exist, and the Steam account must have permission to update it and own Arma 3 as required by the upload action. Steam Guard / account security requirements are determined by the Steam account and action; use a dedicated publishing account where appropriate.
 
-The artifact is uploaded once and retained for 14 days by default. Its name uses the workflow run ID only, so rerun attempts can download the same artifact. It does not include the attempt number.
+## Multiple release variants
 
-The Steam job verifies the archive checksum, file count, file sizes, and per-file hashes before passing the staged content directory to PublisherCmd.
+A project can call the reusable workflow more than once for a single GitHub Release. Calls should be sequenced when they attach different assets to the same GitHub Release. The first call can create/update the release draft and upload its variant; the final call uploads the remaining variant and sets `finalize-github: true`.
 
-## GitHub Release behavior
+For example, a Dev variant can run first. For a prerelease event it can finalize the GitHub prerelease immediately. For a full release event it can leave the GitHub Release as a draft, allowing the Stable variant to upload before the final call publishes the release.
 
-The GitHub draft job creates or updates a draft release for the existing tag and attaches the ZIP, checksum, and manifest. The final publication job changes the draft to a published release only after all enabled destinations succeed.
+## Artifact validation
 
-The workflow uses the triggering commit as the tag target. It does not create a new version tag on a different commit. It does not rerun the complete validation and SQF-VM test matrix; consuming repositories should make those checks required before maintainers create a release tag.
+The workflow requires `.hemttout/release/addons` to exist and contain at least one PBO. It moves the HEMTT output to a named variant folder and creates a ZIP archive. The same folder is passed to the Workshop upload action, ensuring the Steam upload and GitHub archive are derived from the same HEMTT output.
 
-## Steam Workshop behavior
+## Limitations and recovery
 
-Steam publishing uses Bohemia Interactive's PublisherCmd.exe:
+GitHub Releases and Steam Workshop are separate services, not an atomic transaction. If Steam publishing fails after the GitHub draft is created, the release remains a draft when `finalize-github` is enabled only after the Steam step. Rerun the failed workflow job or the workflow after resolving the Steam issue. Avoid creating a second GitHub Release for the same tag.
 
-~~~powershell
-PublisherCmd update /id:<workshop-id> /changeNoteFile:<path> /path:<content-folder> /nologo /nosummary
-~~~
-
-PublisherCmd updates an existing Workshop item. Initial item creation, title/description/preview/tag/visibility editing, and acceptance of the Steamworks agreement remain manual prerequisites.
-
-PublisherCmd uses the Steam client API and requires the Steam client to be running and online. The workflow therefore targets a dedicated Windows self-hosted runner labelled arma3-publisher, running under the Windows account with the authenticated Steam client session. No Steam password or Steam Guard code is passed to the workflow.
-
-The Steam job has only `contents: read` permission and does not check out or execute the consuming repository. Restrict the runner to trusted release workflows; never expose it to untrusted pull-request jobs.
-
-## Private framework access
-
-The framework repository is private. Its Actions access settings must allow each consuming repository to call the reusable workflows. Each reusable workflow declares a workflow_call secret named framework_token. The consuming repository passes a fine-grained token with Contents: read access to this repository. The token is used only for the framework checkout, and checkout credentials are not persisted.
-
-## Recovery
-
-If GitHub draft creation fails but Steam succeeds, rerun the failed GitHub draft and dependent publication jobs. If Steam fails but the GitHub draft succeeds, rerun the failed Steam and dependent publication jobs. Successful jobs are not rebuilt or republished when using Re-run failed jobs on the same workflow run.
-
-Do not start a new workflow run to recover a partial release unless a new build is explicitly intended. The original run artifact is retained for 14 days. After that, recovery may require rebuilding or manually restoring the exact artifact.
+The workflow updates existing Workshop items; it does not create new items or manage their title, description, preview image, tags, or visibility. The release workflow does not replace the consuming repository's normal validation and test CI. Configure release creation so those checks have passed before maintainers publish a GitHub Release.
