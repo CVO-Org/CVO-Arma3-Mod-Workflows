@@ -87,8 +87,7 @@ jobs:
 
           $arguments = @(
             '-ProjectRoot', $env:PROJECT_ROOT,
-            '-Operation', $env:OPERATION,
-            '-Module', 'Build.HEMTT'
+            '-Operation', $env:OPERATION
           )
           if (-not [string]::IsNullOrWhiteSpace($env:CONFIG_PATH)) {
             $arguments += @('-ConfigPath', $env:CONFIG_PATH)
