@@ -79,16 +79,11 @@ The callable `.github/workflows/test.yml` workflow checks out the consuming proj
 
 ## Release consistency
 
-A release tag starts one release orchestration process. It validates the tag and project version, runs required checks, builds one release package, and publishes that version to GitHub Releases and Steam Workshop.
+The callable `.github/workflows/release.yml` workflow validates that an existing semantic-version tag points to the triggering commit, builds HEMTT release output once, and uploads one immutable artifact for all enabled destinations. It creates a GitHub Release draft, optionally updates an existing Arma 3 Workshop item through PublisherCmd on a dedicated authenticated Windows self-hosted runner, and publishes the GitHub Release only after all enabled destinations succeed.
 
-GitHub and Steam do not provide a shared transaction. Therefore:
-- record the status of each publication target;
-- never rebuild or increment the version merely because one destination failed;
-- retry only the failed destination using the same version and artifact;
-- treat the overall release as complete only when both enabled destinations report success;
-- make publication steps safe to retry and detect an already-published version.
+GitHub and Steam do not provide a shared transaction. The workflow records each destination's result and keeps the GitHub Release in draft state when an enabled destination fails. Recovery uses GitHub Actions' **Re-run failed jobs** on the same workflow run, reusing the retained artifact rather than rebuilding. The workflow verifies SHA-256 hashes for the archive and every file in the Workshop content folder.
 
-Steam credentials must be stored as protected secrets. Steam Guard or other interactive authentication requirements must be addressed in the release-runner setup; secrets must never be written to logs or committed files.
+PublisherCmd requires the Steam client to be running and online. Steam publishing is therefore isolated to a dedicated self-hosted runner running under the authenticated Steam account. Steam passwords and Steam Guard codes are not workflow inputs or repository secrets. The workflow updates an existing Workshop item; initial item creation and metadata editing remain manual prerequisites.
 
 ## Compatibility and versioning
 
