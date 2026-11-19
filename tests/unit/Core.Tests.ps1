@@ -94,6 +94,7 @@ Describe 'Arma3 Mod Workflows core' {
             $result = & $descriptor.Invoke $context 'Build'
             $result.Status | Should -Be 'Failed'
             $result.Summary | Should -Match 'timeout_seconds must be at least 1'
+            $result.DurationMs | Should -BeGreaterThan 0
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -358,6 +359,7 @@ Describe 'Arma3 Mod Workflows core' {
             $result = & $descriptor.Invoke $context 'Build'
             $result.Status | Should -Be 'Failed'
             $result.Summary | Should -Match 'configuration was not found'
+            $result.DurationMs | Should -BeGreaterThan 0
         }
         finally { Remove-Item -LiteralPath $projectRoot -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -398,6 +400,7 @@ Describe 'Arma3 Mod Workflows core' {
         }
         $result = & $descriptor.Invoke $context 'Detect'
         $result.Status | Should -Be 'Skipped'
+        $result.DurationMs | Should -BeGreaterThan 0
     }
 
     It 'skips an unavailable optional HEMTT executable' {
@@ -411,6 +414,7 @@ Describe 'Arma3 Mod Workflows core' {
         $result.Status | Should -Be 'Skipped'
         $result.Warnings.Count | Should -Be 1
         $result.Errors.Count | Should -Be 0
+        $result.DurationMs | Should -BeGreaterThan 0
     }
 
     It 'fails when a required HEMTT executable is unavailable' {
