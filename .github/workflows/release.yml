@@ -1,0 +1,372 @@
+name: Release
+
+on:
+  workflow_call:
+    inputs:
+      framework-ref:
+        description: Immutable tag or commit used to reference this reusable workflow
+        required: true
+        type: string
+      release-tag:
+        description: Semantic version tag to publish, for example v1.2.3
+        required: true
+        type: string
+      release-name:
+        description: Optional GitHub Release title
+        required: false
+        type: string
+        default: ''
+      release-notes:
+        description: Optional GitHub Release notes
+        required: false
+        type: string
+        default: ''
+      hemtt-version:
+        description: HEMTT version to install
+        required: false
+        type: string
+        default: v1.21.0
+      project-root:
+        description: Project root relative to the caller repository workspace
+        required: false
+        type: string
+        default: .
+      config-path:
+        description: Optional framework configuration path relative to project root
+        required: false
+        type: string
+        default: ''
+      publish-github:
+        description: Create and publish a GitHub Release
+        required: false
+        type: boolean
+        default: true
+      publish-steam:
+        description: Update an existing Arma 3 Steam Workshop item
+        required: false
+        type: boolean
+        default: false
+      workshop-id:
+        description: Existing Steam Workshop item ID; required when publish-steam is true
+        required: false
+        type: string
+        default: ''
+      publisher-path:
+        description: Absolute path to PublisherCmd.exe on the self-hosted runner
+        required: false
+        type: string
+        default: ''
+      steam-change-note:
+        description: Change note sent to the existing Workshop item
+        required: false
+        type: string
+        default: ''
+      prerelease:
+        description: Mark the GitHub Release as a prerelease
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arma3-release-${{ inputs['release-tag'] }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Validate release inputs
+    runs-on: windows-latest
+    steps:
+      - name: Validate release configuration
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs['release-tag'] }}
+          PUBLISH_GITHUB: ${{ inputs['publish-github'] }}
+          PUBLISH_STEAM: ${{ inputs['publish-steam'] }}
+          WORKSHOP_ID: ${{ inputs['workshop-id'] }}
+          PUBLISHER_PATH: ${{ inputs['publisher-path'] }}
+          STEAM_CHANGE_NOTE: ${{ inputs['steam-change-note'] }}
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$') {
+            throw "Release tag '$env:RELEASE_TAG' is not a semantic version tag."
+          }
+          if ($env:PUBLISH_GITHUB -ne 'true' -and $env:PUBLISH_STEAM -ne 'true') {
+            throw 'At least one release destination must be enabled.'
+          }
+          if ($env:PUBLISH_STEAM -eq 'true') {
+            if ($env:WORKSHOP_ID -notmatch '^[0-9]+$') {
+              throw 'A numeric existing workshop-id is required when publish-steam is true.'
+            }
+            if ([string]::IsNullOrWhiteSpace($env:PUBLISHER_PATH)) {
+              throw 'publisher-path is required when publish-steam is true.'
+            }
+            if ([string]::IsNullOrWhiteSpace($env:STEAM_CHANGE_NOTE)) {
+              throw 'steam-change-note is required when publish-steam is true.'
+            }
+          }
+
+  build:
+    name: Build release once
+    needs: preflight
+    runs-on: windows-latest
+    steps:
+      - name: Check out consuming project
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check out framework at the pinned revision
+        uses: actions/checkout@v5
+        with:
+          repository: SkippieDippie/Arma3-Mod-Workflows
+          ref: ${{ inputs['framework-ref'] }}
+          path: .arma3-workflows
+          persist-credentials: false
+
+      - name: Set up HEMTT
+        uses: arma-actions/hemtt@a0570ddd80d2b7be9c0f052494c0f700b42668dd
+        with:
+          version: ${{ inputs['hemtt-version'] }}
+
+      - name: Run HEMTT release through the framework
+        shell: pwsh
+        env:
+          FRAMEWORK_SCRIPT: ${{ github.workspace }}/.arma3-workflows/src/Invoke-Arma3ModWorkflows.ps1
+          PROJECT_ROOT: ${{ inputs['project-root'] }}
+          CONFIG_PATH: ${{ inputs['config-path'] }}
+        run: |
+          $arguments = @(
+            '-ProjectRoot', $env:PROJECT_ROOT,
+            '-Operation', 'Release',
+            '-Module', 'Build.HEMTT'
+          )
+          if (-not [string]::IsNullOrWhiteSpace($env:CONFIG_PATH)) {
+            $arguments += @('-ConfigPath', $env:CONFIG_PATH)
+          }
+
+          $output = & pwsh -NoProfile -NonInteractive -File $env:FRAMEWORK_SCRIPT @arguments 2>&1 | Out-String
+          $frameworkExitCode = $LASTEXITCODE
+          if ($frameworkExitCode -ne 0) {
+            throw "HEMTT release failed with exit code $frameworkExitCode. Output: $output"
+          }
+
+          try {
+            $results = @($output | ConvertFrom-Json -ErrorAction Stop)
+          }
+          catch {
+            throw "Framework CLI did not return valid JSON. Output: $output"
+          }
+
+          $result = @($results | Where-Object { $_.Module -eq 'Build.HEMTT' }) | Select-Object -First 1
+          if (-not $result -or $result.Status -ne 'Passed') {
+            throw "HEMTT release did not pass. Result: $output"
+          }
+
+      - name: Prepare immutable release payload
+        shell: pwsh
+        env:
+          PROJECT_ROOT: ${{ inputs['project-root'] }}
+          RELEASE_TAG: ${{ inputs['release-tag'] }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          $projectRoot = (Resolve-Path -LiteralPath $env:PROJECT_ROOT).Path
+          $contentPath = Join-Path $projectRoot '.hemttout/release'
+          $addonsPath = Join-Path $contentPath 'addons'
+          if (-not (Test-Path -LiteralPath $addonsPath -PathType Container)) {
+            throw "HEMTT release output does not contain the required addons directory: $addonsPath"
+          }
+
+          $pbos = @(Get-ChildItem -LiteralPath $addonsPath -Filter '*.pbo' -File -Recurse)
+          if ($pbos.Count -eq 0) {
+            throw "HEMTT release output contains no PBO files: $addonsPath"
+          }
+
+          $payloadRoot = Join-Path $env:GITHUB_WORKSPACE 'release-payload'
+          New-Item -ItemType Directory -Path $payloadRoot -Force | Out-Null
+          $safeTag = $env:RELEASE_TAG -replace '[^A-Za-z0-9._-]', '_'
+          $archivePath = Join-Path $payloadRoot "arma3-mod-$safeTag.zip"
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          if (Test-Path -LiteralPath $archivePath) {
+            Remove-Item -LiteralPath $archivePath -Force
+          }
+          [System.IO.Compression.ZipFile]::CreateFromDirectory(
+            $contentPath,
+            $archivePath,
+            [System.IO.Compression.CompressionLevel]::Optimal,
+            $false
+          )
+
+          $hash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath "$archivePath.sha256" -Value "$hash  $(Split-Path -Leaf $archivePath)" -Encoding ascii
+
+          $manifest = [ordered]@{
+            release_tag = $env:RELEASE_TAG
+            source_commit = $env:RELEASE_COMMIT
+            workshop_content = '.hemttout/release'
+            archive = (Split-Path -Leaf $archivePath)
+            sha256 = $hash
+            pbo_count = $pbos.Count
+          }
+          $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $payloadRoot 'release-manifest.json') -Encoding utf8
+
+          Write-Host "Prepared $($pbos.Count) PBO files for $env:RELEASE_TAG."
+          Write-Host "Release archive SHA-256: $hash"
+
+      - name: Upload release payload for both destinations
+        uses: actions/upload-artifact@v4
+        with:
+          name: arma3-release-payload-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .hemttout/release/**
+            release-payload/**
+          if-no-files-found: error
+          retention-days: 14
+
+  github-draft:
+    name: Create GitHub Release draft
+    needs: build
+    if: ${{ inputs['publish-github'] }}
+    runs-on: windows-latest
+    steps:
+      - name: Download the prepared release payload
+        uses: actions/download-artifact@v4
+        with:
+          name: arma3-release-payload-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-artifact
+
+      - name: Create or update GitHub Release draft
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3
+        with:
+          tag_name: ${{ inputs['release-tag'] }}
+          name: ${{ inputs['release-name'] != '' && inputs['release-name'] || inputs['release-tag'] }}
+          body: ${{ inputs['release-notes'] }}
+          draft: true
+          prerelease: ${{ inputs.prerelease }}
+          files: |
+            release-artifact/release-payload/*.zip
+            release-artifact/release-payload/*.sha256
+            release-artifact/release-payload/release-manifest.json
+          fail_on_unmatched_files: true
+
+  steam-publish:
+    name: Publish to Arma 3 Steam Workshop
+    needs: build
+    if: ${{ inputs['publish-steam'] }}
+    runs-on: [self-hosted, Windows, X64, arma3-publisher]
+    steps:
+      - name: Download the exact release payload
+        uses: actions/download-artifact@v4
+        with:
+          name: arma3-release-payload-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-artifact
+
+      - name: Verify and publish the prepared release
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs['release-tag'] }}
+          WORKSHOP_ID: ${{ inputs['workshop-id'] }}
+          PUBLISHER_PATH: ${{ inputs['publisher-path'] }}
+          STEAM_CHANGE_NOTE: ${{ inputs['steam-change-note'] }}
+        run: |
+          if (-not (Test-Path -LiteralPath $env:PUBLISHER_PATH -PathType Leaf)) {
+            throw "PublisherCmd.exe was not found: $env:PUBLISHER_PATH"
+          }
+
+          $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'release-artifact/release-payload/release-manifest.json'
+          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+          if ($manifest.release_tag -ne $env:RELEASE_TAG) {
+            throw "Release payload tag mismatch. Expected $env:RELEASE_TAG, received $($manifest.release_tag)."
+          }
+
+          $archivePath = Join-Path $env:GITHUB_WORKSPACE "release-artifact/release-payload/$($manifest.archive)"
+          $actualHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
+          if ($actualHash -ine $manifest.sha256) {
+            throw 'Release archive SHA-256 verification failed.'
+          }
+
+          $contentPath = Join-Path $env:GITHUB_WORKSPACE 'release-artifact/.hemttout/release'
+          $addonsPath = Join-Path $contentPath 'addons'
+          if (-not (Test-Path -LiteralPath $addonsPath -PathType Container)) {
+            throw "Workshop content does not contain an addons directory: $addonsPath"
+          }
+          $pboCount = @(Get-ChildItem -LiteralPath $addonsPath -Filter '*.pbo' -File -Recurse).Count
+          if ($pboCount -eq 0) {
+            throw 'Workshop content contains no PBO files.'
+          }
+          if ($pboCount -ne [int]$manifest.pbo_count) {
+            throw "PBO count mismatch. Manifest: $($manifest.pbo_count); downloaded content: $pboCount."
+          }
+
+          $notePath = Join-Path $env:RUNNER_TEMP 'arma3-workshop-change-note.txt'
+          Set-Content -LiteralPath $notePath -Value $env:STEAM_CHANGE_NOTE -Encoding utf8
+
+          $arguments = @(
+            'update',
+            "/id:$env:WORKSHOP_ID",
+            "/changeNoteFile:$notePath",
+            "/path:$contentPath",
+            '/nologo',
+            '/nosummary'
+          )
+          & $env:PUBLISHER_PATH @arguments
+          $publisherExitCode = $LASTEXITCODE
+          if ($publisherExitCode -ne 0) {
+            throw "PublisherCmd failed with exit code $publisherExitCode. See Arma 3 Tools Publisher logs on the self-hosted runner."
+          }
+
+          Write-Host "Steam Workshop item $env:WORKSHOP_ID was updated for release $env:RELEASE_TAG."
+
+  github-publish:
+    name: Publish GitHub Release
+    needs: [build, github-draft, steam-publish]
+    if: >-
+      always() &&
+      needs.build.result == 'success' &&
+      needs.github-draft.result == 'success' &&
+      (!inputs['publish-steam'] || needs.steam-publish.result == 'success')
+    runs-on: windows-latest
+    steps:
+      - name: Publish the prepared GitHub Release draft
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3
+        with:
+          tag_name: ${{ inputs['release-tag'] }}
+          draft: false
+          prerelease: ${{ inputs.prerelease }}
+
+  release-status:
+    name: Release delivery summary
+    needs: [preflight, build, github-draft, steam-publish, github-publish]
+    if: always()
+    runs-on: windows-latest
+    steps:
+      - name: Summarize destination results
+        shell: pwsh
+        env:
+          PREFLIGHT: ${{ needs.preflight.result }}
+          BUILD: ${{ needs.build.result }}
+          GITHUB_DRAFT: ${{ needs.github-draft.result }}
+          STEAM: ${{ needs.steam-publish.result }}
+          GITHUB_PUBLISH: ${{ needs.github-publish.result }}
+        run: |
+          $lines = @(
+            '# Arma 3 release delivery',
+            '',
+            "| Stage | Result |",
+            "|---|---|",
+            "| Preflight | $env:PREFLIGHT |",
+            "| Build | $env:BUILD |",
+            "| GitHub draft | $env:GITHUB_DRAFT |",
+            "| Steam Workshop | $env:STEAM |",
+            "| GitHub publication | $env:GITHUB_PUBLISH |",
+            ''
+          )
+          if ($env:GITHUB_DRAFT -eq 'success' -and $env:STEAM -eq 'failure') {
+            $lines += 'The GitHub Release remains a draft because Steam Workshop publishing failed. Rerun the failed Steam job and dependent publication job; do not rebuild or manually republish the successful destination.'
+          }
+          if ($env:GITHUB_DRAFT -eq 'failure' -and $env:STEAM -eq 'success') {
+            $lines += 'Steam Workshop publishing succeeded but GitHub Release draft creation failed. Rerun the failed GitHub draft job and its dependent publication job; the successful Steam upload does not need to be repeated.'
+          }
+          $lines | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
