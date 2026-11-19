@@ -1,10 +1,44 @@
 function New-A3WorkflowModuleRegistry { [CmdletBinding()] param() [pscustomobject]@{Modules=@{}} }
 function Register-A3WorkflowModule {
  [CmdletBinding()]
- param([Parameter(Mandatory=$true)]$Registry,[Parameter(Mandatory=$true)][string]$Id,[Parameter(Mandatory=$true)][scriptblock]$Invoke,[string[]]$DependsOn=@(),[string[]]$Operations=@('Run'),[string]$Version='0.1.0')
+ param([Parameter(Mandatory=$true)]$Registry,[Parameter(Mandatory=$true)][string]$Id,[Parameter(Mandatory=$true)][scriptblock]$Invoke,[string[]]$DependsOn=@(),[string[]]$Operations=@('Run'),[string]$Version='0.1.0',[string]$ConfigKey)
  if($Registry.Modules.ContainsKey($Id)){throw "Module '$Id' is already registered."}
  if($Id -notmatch '^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)+$'){throw "Invalid module identifier '$Id'."}
- $Registry.Modules[$Id]=[pscustomobject]@{Id=$Id;Version=$Version;DependsOn=@($DependsOn);Operations=@($Operations);Invoke=$Invoke}
+ if($Operations.Count -eq 0 -or @($Operations | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count -gt 0){throw "Module '$Id' must declare at least one non-empty operation."}
+ $Registry.Modules[$Id]=[pscustomobject]@{Id=$Id;Version=$Version;DependsOn=@($DependsOn);Operations=@($Operations);ConfigKey=$ConfigKey;Invoke=$Invoke}
+}
+function Import-A3WorkflowModules {
+ [CmdletBinding()]
+ param([Parameter(Mandatory=$true)]$Registry,[Parameter(Mandatory=$true)][string]$ModulesRoot,[Parameter(Mandatory=$true)][hashtable]$Configuration,[object]$Logger)
+ if(-not(Test-Path -LiteralPath $ModulesRoot -PathType Container)){return [pscustomobject]@{Registered=@();Skipped=@();Discovered=0}}
+ $registered=New-Object System.Collections.Generic.List[string]
+ $skipped=New-Object System.Collections.Generic.List[object]
+ $moduleFiles=@(Get-ChildItem -LiteralPath $ModulesRoot -Directory | Sort-Object Name | ForEach-Object { Join-Path $_.FullName 'Module.ps1' } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+ foreach($moduleFile in $moduleFiles){
+  $descriptor=& $moduleFile
+  if($descriptor -isnot [System.Collections.IDictionary]){throw "Module descriptor '$moduleFile' must return a hashtable."}
+  foreach($required in @('Id','Invoke','ConfigKey')){if(-not $descriptor.Contains($required)){throw "Module descriptor '$moduleFile' is missing '$required'."}}
+  if($descriptor.Invoke -isnot [scriptblock]){throw "Module '$($descriptor.Id)' must provide an Invoke scriptblock."}
+  if([string]$descriptor.ConfigKey -notmatch '^[A-Za-z][A-Za-z0-9_]*$'){throw "Module '$($descriptor.Id)' has invalid ConfigKey '$($descriptor.ConfigKey)'."}
+  $enabled=$true
+  if($Configuration.modules -is [hashtable] -and $Configuration.modules.ContainsKey([string]$descriptor.ConfigKey)){
+   $setting=$Configuration.modules[[string]$descriptor.ConfigKey]
+   if($setting -isnot [hashtable] -or ($setting.ContainsKey('enabled') -and $setting.enabled -isnot [bool])){throw "Configuration modules.$($descriptor.ConfigKey) must contain a boolean enabled property."}
+   if($setting.ContainsKey('enabled')){$enabled=$setting.enabled}
+  }
+  if(-not $enabled){
+   $skipped.Add([pscustomobject]@{Id=[string]$descriptor.Id;Reason="Disabled by configuration key modules.$($descriptor.ConfigKey).enabled"})
+   if($Logger){Write-A3WorkflowLog -Logger $Logger -Level Info -Module ([string]$descriptor.Id) -Message 'Module disabled by configuration.'}
+   continue
+  }
+  $dependsOn=@();if($descriptor.Contains('DependsOn')){$dependsOn=@($descriptor.DependsOn)}
+  $operations=@('Run');if($descriptor.Contains('Operations')){$operations=@($descriptor.Operations)}
+  $version='0.1.0';if($descriptor.Contains('Version')){$version=[string]$descriptor.Version}
+  Register-A3WorkflowModule -Registry $Registry -Id ([string]$descriptor.Id) -Invoke $descriptor.Invoke -DependsOn $dependsOn -Operations $operations -Version $version -ConfigKey ([string]$descriptor.ConfigKey)
+  $registered.Add([string]$descriptor.Id)
+  if($Logger){Write-A3WorkflowLog -Logger $Logger -Level Info -Module ([string]$descriptor.Id) -Message 'Module discovered and registered.' -Data @{ConfigKey=$descriptor.ConfigKey;Version=$version}}
+ }
+ [pscustomobject]@{Registered=@($registered.ToArray());Skipped=@($skipped.ToArray());Discovered=$moduleFiles.Count}
 }
 function Resolve-A3WorkflowModuleOrder {
  [CmdletBinding()] param([Parameter(Mandatory=$true)]$Registry,[string[]]$ModuleIds)
