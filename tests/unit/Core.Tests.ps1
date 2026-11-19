@@ -148,6 +148,37 @@ Describe 'Arma3 Mod Workflows core' {
         { Resolve-A3WorkflowModuleOrder -Registry $registry -ModuleIds @('Core.First') } | Should -Throw
     }
 
+    It 'rejects missing required dependencies before execution' {
+        $registry = New-A3WorkflowModuleRegistry
+        Register-A3WorkflowModule -Registry $registry -Id 'Feature.Orphan' -DependsOn @('Core.Missing') -Invoke { throw 'must not execute' }
+        { Resolve-A3WorkflowModuleOrder -Registry $registry -ModuleIds @('Feature.Orphan') } | Should -Throw '*Required module*not registered*'
+    }
+
+    It 'rejects duplicate module identifiers' {
+        $registry = New-A3WorkflowModuleRegistry
+        Register-A3WorkflowModule -Registry $registry -Id 'Core.Sample' -Invoke { }
+        { Register-A3WorkflowModule -Registry $registry -Id 'Core.Sample' -Invoke { } } | Should -Throw '*already registered*'
+    }
+
+    It 'rejects module identifiers outside the dotted identifier format' {
+        $registry = New-A3WorkflowModuleRegistry
+        { Register-A3WorkflowModule -Registry $registry -Id 'Invalid_Module' -Invoke { } } | Should -Throw '*Invalid module identifier*'
+    }
+
+    It 'rejects modules with no declared operations' {
+        $registry = New-A3WorkflowModuleRegistry
+        { Register-A3WorkflowModule -Registry $registry -Id 'Core.Empty' -Operations @() -Invoke { } } | Should -Throw '*at least one non-empty operation*'
+    }
+
+    It 'skips modules that do not support the requested operation' {
+        $registry = New-A3WorkflowModuleRegistry
+        Register-A3WorkflowModule -Registry $registry -Id 'Core.Build' -Operations @('Build') -Invoke { throw 'unsupported operation must not execute' }
+        $context = [pscustomobject]@{ Logger = $null }
+        $result = Invoke-A3WorkflowModules -Registry $registry -Context $context -Operation 'Validate'
+        $result[0].Status | Should -Be 'Skipped'
+        $result[0].Summary | Should -Match 'not supported'
+    }
+
     It 'normalizes successful module execution' {
         $registry = New-A3WorkflowModuleRegistry
         Register-A3WorkflowModule -Registry $registry -Id 'Core.Sample' -Invoke { param($Context, $Operation) return @{ Value = 42 } }
