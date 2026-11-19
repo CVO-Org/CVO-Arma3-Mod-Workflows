@@ -87,10 +87,25 @@
 
         $previousLocation = Get-Location
         $outputLines = @()
+        $versionOutputLines = @()
         $exitCode = 1
+        $versionExitCode = 0
         try {
             Set-Location -LiteralPath $projectRoot
-            $outputLines = @(& $executable @commandArguments 2>&1 | ForEach-Object { [string]$_ })
+            if ($Operation -ne 'Detect') {
+                $versionOutputLines = @(& $executable --version 2>&1 | ForEach-Object { [string]$_ })
+                $versionExitCode = $LASTEXITCODE
+                if ($null -eq $versionExitCode) { $versionExitCode = 0 }
+            }
+            if ($Operation -eq 'Detect') {
+                $outputLines = @(& $executable @commandArguments 2>&1 | ForEach-Object { [string]$_ })
+            }
+            elseif ($versionExitCode -eq 0) {
+                $outputLines = @(& $executable @commandArguments 2>&1 | ForEach-Object { [string]$_ })
+            }
+            else {
+                $outputLines = @()
+            }
             $exitCode = $LASTEXITCODE
             if ($null -eq $exitCode) { $exitCode = 0 }
         }
@@ -102,11 +117,28 @@
             Set-Location -LiteralPath $previousLocation
         }
 
+        $versionOutputText = $versionOutputLines -join [Environment]::NewLine
         $outputText = $outputLines -join [Environment]::NewLine
         $version = $null
-        if ($Operation -eq 'Detect' -or $outputText -match '(?i)HEMTT\s+v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
-            if ($outputText -match '(?i)HEMTT\s+v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
-                $version = $Matches[1]
+        $versionText = $versionOutputText
+        if ($Operation -eq 'Detect') { $versionText = $outputText }
+        if ($versionText -match '(?i)HEMTT\s+v?([0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?)') {
+            $version = $Matches[1]
+        }
+
+        if ($Operation -ne 'Detect' -and $versionExitCode -ne 0) {
+            $exitCode = $versionExitCode
+            $outputText = 'HEMTT version query failed.' + [Environment]::NewLine + $versionOutputText
+        }
+        if ($toolConfiguration -is [System.Collections.IDictionary] -and $toolConfiguration.version) {
+            $expectedVersion = ([string]$toolConfiguration.version).TrimStart('v')
+            if (-not $version) {
+                $exitCode = 1
+                $outputText = "Unable to determine HEMTT version; configured version requirement is $expectedVersion." + [Environment]::NewLine + $outputText
+            }
+            elseif ($version -ne $expectedVersion) {
+                $exitCode = 1
+                $outputText = "HEMTT version mismatch. Expected $expectedVersion but found $version." + [Environment]::NewLine + $outputText
             }
         }
 
@@ -133,6 +165,9 @@
         $data = @{
             Executable = $executable
             Version = $version
+            ExpectedVersion = if ($toolConfiguration -is [System.Collections.IDictionary]) { $toolConfiguration.version } else { $null }
+            VersionOutput = $versionOutputText
+            VersionExitCode = [int]$versionExitCode
             Arguments = $commandArguments
             ExitCode = [int]$exitCode
             Output = $outputText
