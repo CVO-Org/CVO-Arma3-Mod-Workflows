@@ -56,7 +56,7 @@ Configure the executable when it is not available on `PATH`:
       }
     }
 
-The configured executable path may be absolute or relative to the project root. If omitted, the module searches for `hemtt.exe` or `hemtt` on `PATH`. Build/check operations require the configured `paths.hemtt_config` file (default `.hemtt/project.toml`); `Detect` does not require a HEMTT project.
+The configured executable path may be absolute or relative to the project root. If omitted, the module searches for `hemtt.exe` or `hemtt` on `PATH`. HEMTT is optional by default: if it is unavailable, the operation is skipped. Set `tools.hemtt.required` to `true` to make a missing executable a failure. Build/check operations require the configured `paths.hemtt_config` file (default `.hemtt/project.toml`); `Detect` does not require a HEMTT project.
 
 Examples:
 
