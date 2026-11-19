@@ -40,8 +40,36 @@ Run the framework from PowerShell:
 
 Use `-ConfigPath` to select a non-default configuration file, `-EnableConsoleLog` to mirror log messages to the console, and `-FailOnWarning` to return exit code 1 when a module reports a warning. Exit codes are 0 for success, 1 for failed module results or configured warning failure, and 2 for initialization or command errors.
 
+## HEMTT build module
+
+The initial HEMTT module is discovered as `Build.HEMTT` when the framework's `build` module is enabled. It supports the operations `Detect`, `Check`, `Dev`, `Build`, `Release`, and the default `Run` operation (mapped to `hemtt build`).
+
+Configure the executable when it is not available on `PATH`:
+
+    {
+      "schema_version": 1,
+      "tools": {
+        "hemtt": {
+          "enabled": true,
+          "path": "tools/hemtt.exe"
+        }
+      }
+    }
+
+The configured executable path may be absolute or relative to the project root. If omitted, the module searches for `hemtt.exe` or `hemtt` on `PATH`. Build/check operations require the configured `paths.hemtt_config` file (default `.hemtt/project.toml`); `Detect` does not require a HEMTT project.
+
+Examples:
+
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Detect -Module Build.HEMTT
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Check -Module Build.HEMTT
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Dev -Module Build.HEMTT
+    ./src/Invoke-Arma3ModWorkflows.ps1 -ProjectRoot . -Operation Release -Module Build.HEMTT
+
+HEMTT output, process exit code, executable path, and discovered output artifact paths are included in the module result. HEMTT itself remains an external dependency; the framework does not download or install it.
+
 ## Current limitations
 
 - YAML requires `powershell-yaml`; JSON does not.
-- No build, validation, testing, or release capability modules are registered yet; the discovery mechanism and CLI are infrastructure only.
+- The HEMTT module is the first capability module; validation, testing, and release orchestration modules are not yet implemented.
+- The HEMTT module currently invokes the CLI synchronously and reports its output; cancellation, streaming log forwarding, and configurable artifact-copying are future work.
 - The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
