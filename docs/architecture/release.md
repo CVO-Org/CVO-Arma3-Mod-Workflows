@@ -42,7 +42,7 @@ For example, a Dev variant can run first. For a prerelease event it can finalize
 
 ## Artifact validation
 
-The workflow requires `.hemttout/release/addons` to exist and contain at least one PBO. It moves the HEMTT output to a named variant folder and creates a ZIP archive. The same folder is passed to the Workshop upload action, ensuring the Steam upload and GitHub archive are derived from the same HEMTT output.
+The workflow requires `.hemttout/release/addons` to exist and contain at least one PBO. It moves the HEMTT output to a named variant folder and creates a ZIP archive. The same folder is passed to the Workshop upload action, ensuring the Steam upload and GitHub archive are derived from the same HEMTT output. After packaging, the workflow enumerates the release files, compares the ZIP entry count, rejects unexpected entries, and verifies every archived file against its source using SHA-256. This integrity check runs before either publishing destination is used.
 
 ## Limitations and recovery
 
