@@ -213,4 +213,37 @@ Describe 'Executable release packaging validation' {
             Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
+    It 'fails when HEMTT release output is missing' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $root -Force | Out-Null
+        $oldFolder = $env:RELEASE_FOLDER; $oldTag = $env:RELEASE_TAG
+        $env:RELEASE_FOLDER = '@Fixture'; $env:RELEASE_TAG = 'v1.2.3'
+        try {
+            Push-Location $root
+            try { { & ([scriptblock]::Create($packagingScript)) } | Should -Throw -ExpectedMessage '*HEMTT release output not found*' }
+            finally { Pop-Location }
+        } finally {
+            $env:RELEASE_FOLDER = $oldFolder; $env:RELEASE_TAG = $oldTag
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'fails when the HEMTT addons directory is missing' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        $release = Join-Path $root '.hemttout/release'
+        New-Item -ItemType Directory -Path $release -Force | Out-Null
+        'readme' | Set-Content -LiteralPath (Join-Path $release 'readme.txt')
+        $oldFolder = $env:RELEASE_FOLDER; $oldTag = $env:RELEASE_TAG
+        $env:RELEASE_FOLDER = '@Fixture'; $env:RELEASE_TAG = 'v1.2.3'
+        try {
+            Push-Location $root
+            try { { & ([scriptblock]::Create($packagingScript)) } | Should -Throw -ExpectedMessage '*addons*' }
+            finally { Pop-Location }
+            Test-Path -LiteralPath (Join-Path $root '@Fixture-v1.2.3') | Should -BeFalse
+        } finally {
+            $env:RELEASE_FOLDER = $oldFolder; $env:RELEASE_TAG = $oldTag
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
 }
