@@ -186,7 +186,7 @@ jobs:
               @(Get-ChildItem -LiteralPath $addons -Filter '*.pbo' -File -Recurse).Count -eq 0) {
             throw "HEMTT output must contain at least one PBO under $addons."
           }
-          $destination = Join-Path (Get-Location) "$($env:RELEASE_FOLDER)-$($env:RELEASE_TAG)""
+          $destination = Join-Path (Get-Location) "$($env:RELEASE_FOLDER)-$($env:RELEASE_TAG)"
           if (Test-Path -LiteralPath $destination) {
             Remove-Item -LiteralPath $destination -Recurse -Force
           }
