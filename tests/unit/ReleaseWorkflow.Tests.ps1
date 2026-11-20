@@ -56,6 +56,35 @@ Describe 'Reusable release workflow safety' {
         $workflow.Contains('if: ${{ inputs[''publish-github''] && inputs[''finalize-github''] }}') | Should -BeTrue
     }
 
+    It 'keeps the GitHub release as a draft when Steam upload fails' {
+        $draftStep = $workflow.IndexOf('name: Attach ZIP to GitHub Release draft')
+        $steamStep = $workflow.IndexOf('name: Upload to Steam Workshop')
+        $finalizeStep = $workflow.IndexOf('name: Publish GitHub Release')
+        $draftStep | Should -BeGreaterThan -1
+        $steamStep | Should -BeGreaterThan $draftStep
+        $finalizeStep | Should -BeGreaterThan $steamStep
+        # GitHub Actions applies the default success() condition to finalization,
+        # so a failed Steam step prevents this step from running.
+        $finalizeLine = ($workflow -split "`r?`n" | Where-Object { $_ -match 'if:.*finalize-github' }) -join ''
+        $finalizeLine | Should -Not -Match 'always\(\)|failure\(\)'
+    }
+
+    It 'uses the same tag for draft creation and release finalization to support reruns' {
+        $draftStep = $workflow.Substring($workflow.IndexOf('name: Attach ZIP to GitHub Release draft'))
+        $finalizeStep = $workflow.Substring($workflow.IndexOf('name: Publish GitHub Release'))
+        $draftStep | Should -Match "tag_name:.*inputs\['release-tag'\]"
+        $finalizeStep | Should -Match "tag_name:.*inputs\['release-tag'\]"
+        $workflow | Should -Match 'draft: true'
+        $workflow | Should -Match 'draft: false'
+    }
+
+    It 'does not finalize GitHub when GitHub publishing or finalization is disabled' {
+        $finalizeStep = $workflow.Substring($workflow.IndexOf('name: Publish GitHub Release'))
+        $finalizeStep | Should -Match "if:.*inputs\['publish-github'\].*inputs\['finalize-github'\]"
+        $draftStep = $workflow.Substring($workflow.IndexOf('name: Attach ZIP to GitHub Release draft'))
+        $draftStep | Should -Match "if:.*inputs\['publish-github'\]"
+    }
+
     It 'does not contain a direct Steam publish step in the test workflow' {
         $testWorkflow = Get-Content -LiteralPath (Join-Path $repositoryRoot '.github/workflows/core-tests.yml') -Raw
         $testWorkflow | Should -Not -Match 'workshop-upload'
