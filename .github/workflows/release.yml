@@ -206,7 +206,7 @@ jobs:
             $expected = @{}
             $rootName = Split-Path -Leaf $destination
             foreach ($file in Get-ChildItem -LiteralPath $destination -File -Recurse) {
-              $relative = $file.FullName.Substring($destination.Length).TrimStart([char[]]@('\\', '/')) -replace '\\\\', '/'
+              $relative = $file.FullName.Substring($destination.Length).TrimStart([char[]]@('\\', '/'))  .Replace('\\', '/')
               $entryName = "$rootName/$relative"
               $expected[$entryName] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
             }
