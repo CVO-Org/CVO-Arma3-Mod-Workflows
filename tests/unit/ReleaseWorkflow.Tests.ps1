@@ -147,3 +147,70 @@ Describe 'Executable release configuration validation' {
         Remove-Item -LiteralPath $validationScriptPath -Force -ErrorAction SilentlyContinue
     }
 }
+
+Describe 'Executable release packaging validation' {
+    BeforeAll {
+        $packageLines = $workflow -split "`r?`n"
+        $packageStep = -1
+        for ($i = 0; $i -lt $packageLines.Length; $i++) {
+            if ($packageLines[$i].Trim() -eq '- name: Package release folder') { $packageStep = $i; break }
+        }
+        if ($packageStep -lt 0) { throw 'Unable to locate release packaging step.' }
+        $runIndex = $packageStep + 1
+        while ($runIndex -lt $packageLines.Length -and $packageLines[$runIndex].Trim() -ne 'run: |') { $runIndex++ }
+        if ($runIndex -ge $packageLines.Length) { throw 'Unable to locate release packaging script block.' }
+        $scriptLines = @()
+        for ($lineIndex = $runIndex + 1; $lineIndex -lt $packageLines.Length; $lineIndex++) {
+            if ($packageLines[$lineIndex].TrimStart() -match '^- name: ') { break }
+            $scriptLines += $packageLines[$lineIndex]
+        }
+        $scriptLines = @($scriptLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($scriptLines.Count -eq 0) { throw 'Release packaging script block is empty.' }
+        $indent = ([regex]::Match($scriptLines[0], '^\\s*')).Length
+        $packagingScript = ($scriptLines | ForEach-Object { if ($_.Length -ge $indent) { $_.Substring($indent) } else { $_ } }) -join "`n"
+    }
+
+    It 'packages release files with root folder preserved and verifies archive integrity' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        $release = Join-Path $root '.hemttout/release'
+        $addons = Join-Path $release 'addons'
+        New-Item -ItemType Directory -Path $addons -Force | Out-Null
+        'fake-pbo-content' | Set-Content -LiteralPath (Join-Path $addons 'sample.pbo')
+        'readme' | Set-Content -LiteralPath (Join-Path $release 'readme.txt')
+        $oldFolder = $env:RELEASE_FOLDER; $oldTag = $env:RELEASE_TAG
+        $env:RELEASE_FOLDER = '@Fixture'; $env:RELEASE_TAG = 'v1.2.3'
+        try {
+            Push-Location $root
+            try { & ([scriptblock]::Create($packagingScript)) } finally { Pop-Location }
+            $archivePath = Join-Path $root '@Fixture-v1.2.3.zip'
+            Test-Path -LiteralPath $archivePath | Should -BeTrue
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($archivePath)
+            try {
+                $names = @($zip.Entries | ForEach-Object FullName)
+                $names | Should -Contain '@Fixture-v1.2.3/addons/sample.pbo'
+                $names | Should -Contain '@Fixture-v1.2.3/readme.txt'
+            } finally { $zip.Dispose() }
+        } finally {
+            $env:RELEASE_FOLDER = $oldFolder; $env:RELEASE_TAG = $oldTag
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'fails when HEMTT output has no PBO files' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+        $release = Join-Path $root '.hemttout/release'
+        New-Item -ItemType Directory -Path (Join-Path $release 'addons') -Force | Out-Null
+        'empty' | Set-Content -LiteralPath (Join-Path $release 'readme.txt')
+        $oldFolder = $env:RELEASE_FOLDER; $oldTag = $env:RELEASE_TAG
+        $env:RELEASE_FOLDER = '@Fixture'; $env:RELEASE_TAG = 'v1.2.3'
+        try {
+            Push-Location $root
+            try { { & ([scriptblock]::Create($packagingScript)) } | Should -Throw -ErrorMessage '*at least one PBO*' }
+            finally { Pop-Location }
+            Test-Path -LiteralPath (Join-Path $root '@Fixture-v1.2.3') | Should -BeFalse
+        } finally {
+            $env:RELEASE_FOLDER = $oldFolder; $env:RELEASE_TAG = $oldTag
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
