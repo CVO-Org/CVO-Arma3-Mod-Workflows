@@ -55,21 +55,24 @@ Describe 'Reusable release workflow safety' {
 
 Describe 'Executable release configuration validation' {
     BeforeAll {
-        $lines = $workflow -split "\\r?\\n"
-        $stepIndex = [array]::FindIndex($lines, [Predicate[string]]{ param($line) $line -match '^      - name: Validate release configuration$' })
+        $lines = $workflow -split "`r?`n"
+        $stepIndex = -1
+        for ($i = 0; $i -lt $lines.Length; $i++) {
+            if ($lines[$i].Trim() -eq '- name: Validate release configuration') { $stepIndex = $i; break }
+        }
         if ($stepIndex -lt 0) { throw 'Unable to locate release validation step.' }
         $runIndex = $stepIndex + 1
-        while ($runIndex -lt $lines.Length -and $lines[$runIndex] -notmatch '^        run: \\|$') { $runIndex++ }
+        while ($runIndex -lt $lines.Length -and $lines[$runIndex].Trim() -ne 'run: |') { $runIndex++ }
         if ($runIndex -ge $lines.Length) { throw 'Unable to locate release validation script block.' }
         $scriptLines = @()
         for ($lineIndex = $runIndex + 1; $lineIndex -lt $lines.Length; $lineIndex++) {
-            if ($lines[$lineIndex] -match '^      - name: ') { break }
+            if ($lines[$lineIndex].TrimStart() -match '^- name: ') { break }
             $scriptLines += $lines[$lineIndex]
         }
         $scriptLines = @($scriptLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         if ($scriptLines.Count -eq 0) { throw 'Release validation script block is empty.' }
         $indent = ([regex]::Match($scriptLines[0], '^\\s*')).Length
-        $validationScript = ($scriptLines | ForEach-Object { if ($_.Length -ge $indent) { $_.Substring($indent) } else { $_ } }) -join "\\n"
+        $validationScript = ($scriptLines | ForEach-Object { if ($_.Length -ge $indent) { $_.Substring($indent) } else { $_ } }) -join "`n"
         $validationScriptPath = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString() + '.ps1')
         Set-Content -LiteralPath $validationScriptPath -Value $validationScript -Encoding utf8
         $validBase = @{
