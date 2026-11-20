@@ -186,7 +186,7 @@ jobs:
               @(Get-ChildItem -LiteralPath $addons -Filter '*.pbo' -File -Recurse).Count -eq 0) {
             throw "HEMTT output must contain at least one PBO under $addons."
           }
-          $destination = Join-Path (Get-Location) "$($env:RELEASE_FOLDER)-$($env:RELEASE_TAG)"
+          $destination = Join-Path (Get-Location) "$($env:RELEASE_FOLDER)-$($env:RELEASE_TAG)""
           if (Test-Path -LiteralPath $destination) {
             Remove-Item -LiteralPath $destination -Recurse -Force
           }
@@ -217,13 +217,13 @@ jobs:
         with:
           itemId: ${{ inputs['workshop-id'] }}
           contentPath: ${{ inputs['project-root'] }}/${{ inputs['release-folder'] }}-${{ inputs['release-tag'] }}
-          changelog: https://github.com/${{ github.repository }}}/releases/tag/${{ inputs['release-tag'] }}
+          changelog: https://github.com/${{ github.repository }}/releases/tag/${{ inputs['release-tag'] }}
         env:
           STEAM_USERNAME: ${{ secrets.steam_username }}
           STEAM_PASSWORD: ${{ secrets.steam_password }}
 
       - name: Publish GitHub Release
-        if: ${{ inputs['publish-github'] }}
+        if: ${{ inputs['publish-github'] && inputs['finalize-github'] }}
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3
         with:
           tag_name: ${{ inputs['release-tag'] }}
