@@ -33,6 +33,15 @@ Describe 'Reusable release workflow safety' {
         $workflow.Contains('$true') | Should -BeTrue
     }
 
+    It 'verifies packaged ZIP file count and SHA-256 hashes against the release folder' {
+        $workflow | Should -Match 'Get-FileHash.*SHA256'
+        $workflow | Should -Match 'Archive file count mismatch'
+        $workflow | Should -Match 'Archive hash mismatch'
+        $workflow | Should -Match 'Unexpected archive entry'
+        $workflow | Should -Match 'Archive integrity verified'
+    }
+
+
     It 'only uploads to Steam when Steam publishing is enabled' {
         $workflow.Contains('if: ${{ inputs[''publish-steam''] }}') | Should -BeTrue
         $workflow | Should -Match 'workshop-upload@v1'
