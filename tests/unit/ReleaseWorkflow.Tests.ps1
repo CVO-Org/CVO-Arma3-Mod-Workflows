@@ -16,7 +16,7 @@ Describe 'Reusable release workflow safety' {
 
     It 'requires HEMTT output to contain at least one PBO before packaging' {
         $workflow | Should -Match "addons"
-        $workflow | Should -Match "\\.pbo"
+        $workflow.Contains('.pbo') | Should -BeTrue
         $workflow | Should -Match 'at least one PBO'
     }
 
@@ -25,16 +25,16 @@ Describe 'Reusable release workflow safety' {
         $publishStep = $workflow.IndexOf('name: Publish GitHub Release')
         $draftStep | Should -BeGreaterThan -1
         $publishStep | Should -BeGreaterThan $draftStep
-        $workflow | Should -Match "inputs\\['publish-github'\\] && inputs\\['finalize-github'\\]"
+        $workflow.Contains("inputs['publish-github'] && inputs['finalize-github']") | Should -BeTrue
     }
 
     It 'preserves the release-folder root in the archive' {
         $workflow | Should -Match 'CreateFromDirectory'
-        $workflow | Should -Match '\\$true'
+        $workflow.Contains('$true') | Should -BeTrue
     }
 
     It 'only uploads to Steam when Steam publishing is enabled' {
-        $workflow | Should -Match "if: \\$\\{\\{ inputs\\['publish-steam'\\] \\}\\}"
+        $workflow.Contains("if: ${{ inputs['publish-steam'] }}") | Should -BeTrue
         $workflow | Should -Match 'workshop-upload@v1'
     }
 
