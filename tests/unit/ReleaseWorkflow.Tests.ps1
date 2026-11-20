@@ -46,6 +46,16 @@ Describe 'Reusable release workflow safety' {
         $workflow | Should -Match 'workshop-upload@v1'
     }
 
+
+    It 'uploads to Steam before finalizing the GitHub release' {
+        $steamStep = $workflow.IndexOf('name: Upload to Steam Workshop')
+        $finalizeStep = $workflow.IndexOf('name: Publish GitHub Release')
+        $steamStep | Should -BeGreaterThan -1
+        $finalizeStep | Should -BeGreaterThan $steamStep
+        $workflow.Contains('if: ${{ inputs[''publish-steam''] }}') | Should -BeTrue
+        $workflow.Contains('if: ${{ inputs[''publish-github''] && inputs[''finalize-github''] }}') | Should -BeTrue
+    }
+
     It 'does not contain a direct Steam publish step in the test workflow' {
         $testWorkflow = Get-Content -LiteralPath (Join-Path $repositoryRoot '.github/workflows/core-tests.yml') -Raw
         $testWorkflow | Should -Not -Match 'workshop-upload'
