@@ -1,11 +1,10 @@
-$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$workflowPath = Join-Path $repositoryRoot '.github/workflows/release.yml'
+BeforeAll {
+    $repositoryRoot = (Get-Location).Path
+    $workflowPath = Join-Path $repositoryRoot '.github/workflows/release.yml'
+    $workflow = Get-Content -LiteralPath $workflowPath -Raw
+}
 
 Describe 'Reusable release workflow safety' {
-    BeforeAll {
-        $workflow = Get-Content -LiteralPath $workflowPath -Raw
-    }
-
     It 'validates release tag, Workshop ID, release folder, and destinations before publishing' {
         $validation = $workflow.Substring(0, $workflow.IndexOf('      - name: Set up HEMTT'))
         $validation | Should -Match 'RELEASE_TAG'
@@ -17,7 +16,7 @@ Describe 'Reusable release workflow safety' {
 
     It 'requires HEMTT output to contain at least one PBO before packaging' {
         $workflow | Should -Match "addons"
-        $workflow | Should -Match "\.pbo"
+        $workflow | Should -Match "\\.pbo"
         $workflow | Should -Match 'at least one PBO'
     }
 
@@ -26,16 +25,16 @@ Describe 'Reusable release workflow safety' {
         $publishStep = $workflow.IndexOf('name: Publish GitHub Release')
         $draftStep | Should -BeGreaterThan -1
         $publishStep | Should -BeGreaterThan $draftStep
-        $workflow | Should -Match "inputs\['publish-github'\] && inputs\['finalize-github'\]"
+        $workflow | Should -Match "inputs\\['publish-github'\\] && inputs\\['finalize-github'\\]"
     }
 
     It 'preserves the release-folder root in the archive' {
         $workflow | Should -Match 'CreateFromDirectory'
-        $workflow | Should -Match '\$true'
+        $workflow | Should -Match '\\$true'
     }
 
     It 'only uploads to Steam when Steam publishing is enabled' {
-        $workflow | Should -Match "if: \$\{\{ inputs\['publish-steam'\] \}\}"
+        $workflow | Should -Match "if: \\$\\{\\{ inputs\\['publish-steam'\\] \\}\\}"
         $workflow | Should -Match 'workshop-upload@v1'
     }
 
