@@ -100,7 +100,7 @@ HEMTT output, separate standard output and standard error, process exit code, ex
 
 ## Reusable HEMTT workflow
 
-The repository provides a callable Windows workflow at `.github/workflows/hemtt.yml`. A consuming repository can call it from its own workflow. Because this framework repository is private, the caller must pass a fine-grained personal access token with **Contents: read** access to this repository. Store it in the consuming repository as `FRAMEWORK_READ_TOKEN`:
+The repository provides a callable Windows workflow at `.github/workflows/hemtt.yml`. A consuming repository can call it from its own workflow. The consuming repository can call this reusable workflow directly. Pin both the `uses` reference and `framework-ref` to the same immutable tag or commit SHA:
 
     name: Mod CI
 
@@ -116,8 +116,6 @@ The repository provides a callable Windows workflow at `.github/workflows/hemtt.
           framework-ref: YOUR_FRAMEWORK_REF
           operation: Check
           hemtt-version: v1.21.0
-        secrets:
-          framework_token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
 
 Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The `uses` reference selects the reusable workflow; `framework-ref` separately tells the workflow which revision of the framework source to check out. Do not use a moving branch for production consumers.
 
@@ -150,8 +148,6 @@ The repository provides a callable Windows validation workflow at `.github/workf
         uses: SkippieDippie/Arma3-Mod-Workflows/.github/workflows/validate.yml@YOUR_FRAMEWORK_REF
         with:
           framework-ref: YOUR_FRAMEWORK_REF
-        secrets:
-          framework_token: ${{ secrets.FRAMEWORK_READ_TOKEN }}
 
 Replace `YOUR_FRAMEWORK_REF` in both places with the same immutable framework tag or commit SHA. The `uses` reference selects the reusable workflow; `framework-ref` separately selects the source revision checked out by that workflow. Do not use a moving branch for production consumers.
 
@@ -234,7 +230,7 @@ Example caller (the example uses one release variant):
           steam_username: ${{ secrets.STEAM_USERNAME }}
           steam_password: ${{ secrets.STEAM_PASSWORD }}
 
-Pin `YOUR_FRAMEWORK_REF` to an immutable commit SHA or release tag. The framework repository's Actions access settings must allow the consuming repository to call its reusable workflows. The framework repository is public, so no framework checkout token is required.
+Pin `YOUR_FRAMEWORK_REF` to an immutable commit SHA or release tag. The framework repository's Actions access settings must allow the consuming repository to call its reusable workflows. No framework checkout token is required.
 
 Required Steam setup:
 
@@ -264,7 +260,7 @@ GitHub Releases and Steam Workshop are not an atomic transaction. If Steam uploa
 ## Current limitations
 
 - YAML requires `powershell-yaml`; JSON does not.
-- Reusable HEMTT, validation, SQF-VM testing, and coordinated release workflows are available. Steam publishing requires a configured self-hosted Windows runner.
+- Reusable HEMTT, validation, SQF-VM testing, and coordinated release workflows are available. Steam publishing uses `arma-actions/workshop-upload@v1` and requires the consuming repository's `STEAM_USERNAME` and `STEAM_PASSWORD` secrets.
 - HEMTT output is captured after process completion; live streaming log forwarding and configurable artifact-copying are future work.
 - The schema evaluator intentionally implements the keywords used by the current schema, not the entire JSON Schema specification. New schema keywords require matching implementation and tests.
 
