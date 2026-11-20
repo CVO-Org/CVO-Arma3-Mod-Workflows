@@ -49,3 +49,14 @@ The workflow requires `.hemttout/release/addons` to exist and contain at least o
 GitHub Releases and Steam Workshop are separate services, not an atomic transaction. If Steam publishing fails after the GitHub draft is created, the release remains a draft when `finalize-github` is enabled only after the Steam step. Rerun the failed workflow job or the workflow after resolving the Steam issue. Avoid creating a second GitHub Release for the same tag.
 
 The workflow updates existing Workshop items; it does not create new items or manage their title, description, preview image, tags, or visibility. The release workflow does not replace the consuming repository's normal validation and test CI. Configure release creation so those checks have passed before maintainers publish a GitHub Release.
+### Failure and rerun scenarios
+
+The release steps intentionally use GitHub Actions' default `success()` gating:
+
+- If the draft-asset attachment step fails, Steam upload and finalization do not run.
+- If Steam upload fails, the GitHub Release remains a draft and finalization is skipped.
+- If Steam succeeds but GitHub finalization fails, the Workshop update is already complete; rerun the workflow for the same tag to retry the GitHub release operation.
+- Reruns use the same release tag and existing GitHub Release, rather than creating a second release for the version. The draft and finalization steps are both scoped to that tag.
+
+
+These scenarios are covered by workflow safety tests. The tests inspect gating and ordering; they do not perform live GitHub Release or Steam Workshop operations.
