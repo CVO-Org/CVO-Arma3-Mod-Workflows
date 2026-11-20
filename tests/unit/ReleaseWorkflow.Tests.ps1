@@ -34,7 +34,7 @@ Describe 'Reusable release workflow safety' {
     }
 
     It 'only uploads to Steam when Steam publishing is enabled' {
-        $workflow.Contains("if: ${{ inputs['publish-steam'] }}") | Should -BeTrue
+        $workflow.Contains('if: ${{ inputs[''publish-steam''] }}') | Should -BeTrue
         $workflow | Should -Match 'workshop-upload@v1'
     }
 
