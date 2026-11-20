@@ -205,7 +205,7 @@ Describe 'Executable release packaging validation' {
         $env:RELEASE_FOLDER = '@Fixture'; $env:RELEASE_TAG = 'v1.2.3'
         try {
             Push-Location $root
-            try { { & ([scriptblock]::Create($packagingScript)) } | Should -Throw -ErrorMessage '*at least one PBO*' }
+            try { { & ([scriptblock]::Create($packagingScript)) } | Should -Throw -ExpectedMessage '*at least one PBO*' }
             finally { Pop-Location }
             Test-Path -LiteralPath (Join-Path $root '@Fixture-v1.2.3') | Should -BeFalse
         } finally {
