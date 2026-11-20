@@ -26,7 +26,10 @@ if (-not (Get-Module -ListAvailable -Name Pester)) {
 }
 Import-Module Pester -MinimumVersion 5.0.0 -Force
 $config = New-PesterConfiguration
-$config.Run.Path = Join-Path $PSScriptRoot 'unit/Core.Tests.ps1'
+$config.Run.Path = @(
+    (Join-Path $PSScriptRoot 'unit/Core.Tests.ps1'),
+    (Join-Path $PSScriptRoot 'unit/ReleaseWorkflow.Tests.ps1')
+)
 $config.Run.Exit = $true
 $config.Output.Verbosity = 'Detailed'
 Invoke-Pester -Configuration $config
