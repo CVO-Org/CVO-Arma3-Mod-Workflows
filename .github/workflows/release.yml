@@ -200,6 +200,38 @@ jobs:
             $true
           )
           Write-Host "Packaged $destination with its root folder preserved."
+          # Verify the archive is a byte-for-byte file mirror of the release folder.
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($archive)
+          try {
+            $expected = @{}
+            $rootName = Split-Path -Leaf $destination
+            foreach ($file in Get-ChildItem -LiteralPath $destination -File -Recurse) {
+              $relative = $file.FullName.Substring($destination.Length).TrimStart([char[]]@('\\', '/')) -replace '\\\\', '/'
+              $entryName = "$rootName/$relative"
+              $expected[$entryName] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+            }
+            $actualEntries = @($zip.Entries | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Name) })
+            if ($actualEntries.Count -ne $expected.Count) {
+              throw "Archive file count mismatch: expected $($expected.Count), found $($actualEntries.Count)."
+            }
+            foreach ($entry in $actualEntries) {
+              if (-not $expected.ContainsKey($entry.FullName)) {
+                throw "Unexpected archive entry: $($entry.FullName)"
+              }
+              $stream = $entry.Open()
+              try {
+                $sha = [System.Security.Cryptography.SHA256]::Create()
+                try { $actualHash = ([BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-', '') }
+                finally { $sha.Dispose() }
+              }
+              finally { $stream.Dispose() }
+              if ($actualHash -ne $expected[$entry.FullName]) {
+                throw "Archive hash mismatch for $($entry.FullName)."
+              }
+            }
+          }
+          finally { $zip.Dispose() }
+          Write-Host "Archive integrity verified: $($expected.Count) files."
 
       - name: Attach ZIP to GitHub Release draft
         if: ${{ inputs['publish-github'] }}
