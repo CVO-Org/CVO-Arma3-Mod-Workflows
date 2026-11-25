@@ -245,7 +245,7 @@ jobs:
 
       - name: Upload to Steam Workshop
         if: ${{ inputs['publish-steam'] }}
-        uses: arma-actions/workshop-upload@v1
+        uses: arma-actions/workshop-upload@e80cfb7c9f78eccca76a6ddbec742c89612d4a03
         with:
           itemId: ${{ inputs['workshop-id'] }}
           contentPath: ${{ inputs['project-root'] }}/${{ inputs['release-folder'] }}-${{ inputs['release-tag'] }}
