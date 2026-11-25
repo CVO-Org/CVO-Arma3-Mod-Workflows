@@ -60,3 +60,4 @@ The release steps intentionally use GitHub Actions' default `success()` gating:
 
 
 These scenarios are covered by workflow safety tests. The tests inspect gating and ordering; they do not perform live GitHub Release or Steam Workshop operations.
+The Steam Workshop upload action is pinned to commit `e80cfb7c9f78eccca76a6ddbec742c89612d4a03` rather than a floating tag, so release behavior does not silently change when upstream moves a tag.
