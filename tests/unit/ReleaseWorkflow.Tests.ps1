@@ -49,7 +49,7 @@ Describe 'Reusable release workflow safety' {
 
     It 'pins the Steam Workshop upload action to an immutable commit' {
         $workflow | Should -Match 'workshop-upload@e80cfb7c9f78eccca76a6ddbec742c89612d4a03'
-        $workflow | Should -Not -Match 'workshop-upload@e80cfb7c9f78eccca76a6ddbec742c89612d4a03'
+        $workflow | Should -Not -Match 'workshop-upload@v1'
     }
 
     It 'uploads to Steam before finalizing the GitHub release' {
