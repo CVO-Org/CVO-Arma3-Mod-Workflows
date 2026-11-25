@@ -43,9 +43,14 @@ Describe 'Reusable release workflow safety' {
 
     It 'only uploads to Steam when Steam publishing is enabled' {
         $workflow.Contains('if: ${{ inputs[''publish-steam''] }}') | Should -BeTrue
-        $workflow | Should -Match 'workshop-upload@v1'
+        $workflow | Should -Match 'workshop-upload@e80cfb7c9f78eccca76a6ddbec742c89612d4a03'
     }
 
+
+    It 'pins the Steam Workshop upload action to an immutable commit' {
+        $workflow | Should -Match 'workshop-upload@e80cfb7c9f78eccca76a6ddbec742c89612d4a03'
+        $workflow | Should -Not -Match 'workshop-upload@v1'
+    }
 
     It 'uploads to Steam before finalizing the GitHub release' {
         $steamStep = $workflow.IndexOf('name: Upload to Steam Workshop')
